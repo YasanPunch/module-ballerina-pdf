@@ -43,10 +43,15 @@ public type PageMargins record {|
 #                Disable only if input is already well-formed XHTML. Default: true.
 # + additionalCss - Additional CSS to inject into the document before conversion.
 #                   Use this for consumer-specific style overrides without modifying the HTML.
+# + customFonts - Custom fonts to register for the conversion. Each entry maps a font name to TTF
+#                 file content as bytes. The font name is used for CSS font-family matching.
+#                 To register weight/style variants, use suffixes: "MyFont Bold", "MyFont Italic",
+#                 "MyFont BoldItalic". CSS then references just `font-family: MyFont`.
 public type ConversionOptions record {|
     float defaultFontSizePt = 12.0;
     PageSize pageSize = A4;
     PageMargins margins = {top: 36, right: 36, bottom: 36, left: 36};
     boolean preprocess = true;
     string? additionalCss = ();
+    map<byte[]>? customFonts = ();
 |};

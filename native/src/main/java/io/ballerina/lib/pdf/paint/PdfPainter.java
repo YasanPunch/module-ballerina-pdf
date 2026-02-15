@@ -195,6 +195,10 @@ public class PdfPainter {
         if (textRun.isSuperscript()) {
             baselineY -= fontSize * 0.4f;
         }
+        // Subscript: shift baseline down
+        if (textRun.isSubscript()) {
+            baselineY += fontSize * 0.2f;
+        }
 
         float pdfY = toPdfYBaseline(baselineY);
 
@@ -204,6 +208,25 @@ public class PdfPainter {
         stream.newLineAtOffset(pdfX, pdfY);
         stream.showText(text);
         stream.endText();
+
+        // Text decoration (underline, line-through)
+        if (style != null) {
+            String decoration = style.get("text-decoration");
+            if (decoration != null && !"none".equals(decoration)) {
+                float textWidth = fontManager.measureText(text, font, fontSize);
+                float thickness = Math.max(fontSize / 20f, 0.5f);
+                float descent = fontManager.getDescent(font, fontSize);
+
+                if (decoration.contains("underline")) {
+                    float lineY = toPdfYBaseline(baselineY + descent * 0.3f);
+                    drawLine(stream, pdfX, lineY, pdfX + textWidth, lineY, thickness, textColor);
+                }
+                if (decoration.contains("line-through")) {
+                    float lineY = toPdfYBaseline(baselineY - ascent * 0.35f);
+                    drawLine(stream, pdfX, lineY, pdfX + textWidth, lineY, thickness, textColor);
+                }
+            }
+        }
     }
 
     private void paintImage(ReplacedBox replaced, PDPageContentStream stream,

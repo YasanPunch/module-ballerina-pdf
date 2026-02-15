@@ -14,6 +14,7 @@ public class TextRun extends Box {
     private float fontSize;
     private float textWidth;
     private boolean isSuperscript;
+    private boolean isSubscript;
 
     public TextRun(ComputedStyle style, String text) {
         super(style);
@@ -34,6 +35,9 @@ public class TextRun extends Box {
 
     public boolean isSuperscript() { return isSuperscript; }
     public void setSuperscript(boolean superscript) { isSuperscript = superscript; }
+
+    public boolean isSubscript() { return isSubscript; }
+    public void setSubscript(boolean subscript) { isSubscript = subscript; }
 
     @Override
     public String getBoxType() {

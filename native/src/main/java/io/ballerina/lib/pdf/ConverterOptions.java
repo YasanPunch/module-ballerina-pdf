@@ -1,5 +1,7 @@
 package io.ballerina.lib.pdf;
 
+import java.util.Map;
+
 /**
  * Configuration options for HTML-to-PDF conversion.
  */
@@ -32,19 +34,31 @@ public class ConverterOptions {
     private final float marginLeft;
     private final String additionalCss;
     private final boolean preprocess;
+    private final Map<String, byte[]> customFonts;
 
     /** Default options: 12pt font, A4, 36pt margins, no additional CSS, preprocessing enabled. */
     public ConverterOptions() {
         this(DEFAULT_FONT_SIZE_PT, A4_WIDTH, A4_HEIGHT,
                 DEFAULT_MARGIN, DEFAULT_MARGIN, DEFAULT_MARGIN, DEFAULT_MARGIN,
-                null, true);
+                null, true, null);
     }
 
     /** Convenience constructor for font size only (backwards compatibility). */
     public ConverterOptions(float defaultFontSizePt) {
         this(defaultFontSizePt, A4_WIDTH, A4_HEIGHT,
                 DEFAULT_MARGIN, DEFAULT_MARGIN, DEFAULT_MARGIN, DEFAULT_MARGIN,
-                null, true);
+                null, true, null);
+    }
+
+    /** Constructor with all options except custom fonts (backwards compatibility). */
+    public ConverterOptions(float defaultFontSizePt,
+                            float pageWidth, float pageHeight,
+                            float marginTop, float marginRight,
+                            float marginBottom, float marginLeft,
+                            String additionalCss, boolean preprocess) {
+        this(defaultFontSizePt, pageWidth, pageHeight,
+                marginTop, marginRight, marginBottom, marginLeft,
+                additionalCss, preprocess, null);
     }
 
     /** Full constructor with all options. */
@@ -52,7 +66,8 @@ public class ConverterOptions {
                             float pageWidth, float pageHeight,
                             float marginTop, float marginRight,
                             float marginBottom, float marginLeft,
-                            String additionalCss, boolean preprocess) {
+                            String additionalCss, boolean preprocess,
+                            Map<String, byte[]> customFonts) {
         this.defaultFontSizePt = defaultFontSizePt;
         this.pageWidth = pageWidth;
         this.pageHeight = pageHeight;
@@ -62,6 +77,7 @@ public class ConverterOptions {
         this.marginLeft = marginLeft;
         this.additionalCss = additionalCss;
         this.preprocess = preprocess;
+        this.customFonts = customFonts;
     }
 
     /** Returns options configured for CIBIL reports (9pt, A4, tight margins). For testing only. */
@@ -94,4 +110,5 @@ public class ConverterOptions {
     public float getMarginLeft() { return marginLeft; }
     public String getAdditionalCss() { return additionalCss; }
     public boolean isPreprocess() { return preprocess; }
+    public Map<String, byte[]> getCustomFonts() { return customFonts; }
 }

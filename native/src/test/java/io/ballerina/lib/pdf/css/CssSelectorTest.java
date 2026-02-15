@@ -186,4 +186,222 @@ class CssSelectorTest {
         assertTrue(cls.compareTo(tag) > 0);
         assertTrue(id.compareTo(tag) > 0);
     }
+
+    // --- Child combinator > ---
+
+    @Test
+    void matchesChildCombinator() {
+        Document doc = parse("<div><p>direct</p></div>");
+        Element p = findFirst(doc, "p");
+
+        assertTrue(new CssSelector("div > p").matches(p));
+    }
+
+    @Test
+    void childCombinatorRejectsNonDirect() {
+        Document doc = parse("<div><span><p>nested</p></span></div>");
+        Element p = findFirst(doc, "p");
+
+        // p is a grandchild of div, not a direct child
+        assertFalse(new CssSelector("div > p").matches(p));
+        // but descendant combinator still works
+        assertTrue(new CssSelector("div p").matches(p));
+    }
+
+    @Test
+    void childCombinatorChained() {
+        Document doc = parse("<div><ul><li>item</li></ul></div>");
+        Element li = findFirst(doc, "li");
+
+        assertTrue(new CssSelector("div > ul > li").matches(li));
+        assertFalse(new CssSelector("div > li").matches(li));
+    }
+
+    // --- Adjacent sibling combinator + ---
+
+    @Test
+    void matchesAdjacentSibling() {
+        Document doc = parse("<div><h1>title</h1><p>first</p><p>second</p></div>");
+        List<Element> ps = DomUtils.findAll(doc, "p");
+        Element firstP = ps.get(0);
+        Element secondP = ps.get(1);
+
+        // p immediately after h1
+        assertTrue(new CssSelector("h1 + p").matches(firstP));
+        // second p is not immediately after h1
+        assertFalse(new CssSelector("h1 + p").matches(secondP));
+    }
+
+    // --- General sibling combinator ~ ---
+
+    @Test
+    void matchesGeneralSibling() {
+        Document doc = parse("<div><h1>title</h1><p>first</p><p>second</p></div>");
+        List<Element> ps = DomUtils.findAll(doc, "p");
+        Element firstP = ps.get(0);
+        Element secondP = ps.get(1);
+
+        // both p elements are siblings after h1
+        assertTrue(new CssSelector("h1 ~ p").matches(firstP));
+        assertTrue(new CssSelector("h1 ~ p").matches(secondP));
+    }
+
+    @Test
+    void generalSiblingRejectsBeforeSibling() {
+        Document doc = parse("<div><p>before</p><h1>title</h1></div>");
+        Element p = findFirst(doc, "p");
+
+        // p comes before h1, not after
+        assertFalse(new CssSelector("h1 ~ p").matches(p));
+    }
+
+    // --- Attribute selectors ---
+
+    @Test
+    void matchesAttributePresence() {
+        Document doc = parse("<a href=\"http://example.com\">link</a><span>text</span>");
+        Element a = findFirst(doc, "a");
+        Element span = findFirst(doc, "span");
+
+        assertTrue(new CssSelector("[href]").matches(a));
+        assertFalse(new CssSelector("[href]").matches(span));
+    }
+
+    @Test
+    void matchesAttributeExact() {
+        Document doc = parse("<div data-type=\"primary\">a</div><div data-type=\"secondary\">b</div>");
+        List<Element> divs = DomUtils.findAll(doc, "div");
+
+        assertTrue(new CssSelector("[data-type=primary]").matches(divs.get(0)));
+        assertFalse(new CssSelector("[data-type=primary]").matches(divs.get(1)));
+    }
+
+    @Test
+    void matchesAttributeExactQuoted() {
+        Document doc = parse("<div data-type=\"primary\">a</div>");
+        Element div = findFirst(doc, "div");
+
+        assertTrue(new CssSelector("[data-type=\"primary\"]").matches(div));
+        assertTrue(new CssSelector("[data-type='primary']").matches(div));
+    }
+
+    @Test
+    void matchesAttributeStartsWith() {
+        Document doc = parse("<div class=\"btn-primary\">a</div><div class=\"label\">b</div>");
+        List<Element> divs = DomUtils.findAll(doc, "div");
+
+        assertTrue(new CssSelector("[class^=btn]").matches(divs.get(0)));
+        assertFalse(new CssSelector("[class^=btn]").matches(divs.get(1)));
+    }
+
+    @Test
+    void matchesAttributeEndsWith() {
+        Document doc = parse("<a href=\"doc.pdf\">pdf</a><a href=\"doc.html\">html</a>");
+        List<Element> links = DomUtils.findAll(doc, "a");
+
+        assertTrue(new CssSelector("[href$=pdf]").matches(links.get(0)));
+        assertFalse(new CssSelector("[href$=pdf]").matches(links.get(1)));
+    }
+
+    @Test
+    void matchesAttributeContains() {
+        Document doc = parse("<div class=\"foo-bar-baz\">a</div>");
+        Element div = findFirst(doc, "div");
+
+        assertTrue(new CssSelector("[class*=bar]").matches(div));
+        assertFalse(new CssSelector("[class*=xyz]").matches(div));
+    }
+
+    @Test
+    void matchesAttributeWithTag() {
+        Document doc = parse("<input type=\"text\"/><input type=\"password\"/>");
+        List<Element> inputs = DomUtils.findAll(doc, "input");
+
+        CssSelector selector = new CssSelector("input[type=text]");
+        assertTrue(selector.matches(inputs.get(0)));
+        assertFalse(selector.matches(inputs.get(1)));
+    }
+
+    // --- Combinator + attribute combined ---
+
+    @Test
+    void matchesCombinatorWithAttribute() {
+        Document doc = parse("<div><a href=\"http://example.com\">link</a></div>");
+        Element a = findFirst(doc, "a");
+
+        assertTrue(new CssSelector("div > a[href]").matches(a));
+    }
+
+    // --- Specificity with new features ---
+
+    @Test
+    void specificityWithCombinators() {
+        // Combinators don't add specificity; only the simple selectors on each side do
+        CssSpecificity descendant = new CssSelector("div p").getSpecificity();
+        CssSpecificity child = new CssSelector("div > p").getSpecificity();
+        assertEquals(descendant.tags(), child.tags());
+        assertEquals(descendant.classes(), child.classes());
+    }
+
+    @Test
+    void specificityWithAttributeSelector() {
+        // [attr] counts as class-level specificity
+        CssSpecificity attrSel = new CssSelector("[href]").getSpecificity();
+        assertEquals(1, attrSel.classes());
+        assertEquals(0, attrSel.tags());
+
+        CssSpecificity tagAttr = new CssSelector("a[href]").getSpecificity();
+        assertEquals(1, tagAttr.classes());
+        assertEquals(1, tagAttr.tags());
+    }
+
+    // --- Tokenizer ---
+
+    @Test
+    void tokenizesDescendant() {
+        List<Object> tokens = CssSelector.tokenize("div p");
+        assertEquals(3, tokens.size());
+        assertEquals("div", tokens.get(0));
+        assertEquals(' ', tokens.get(1));
+        assertEquals("p", tokens.get(2));
+    }
+
+    @Test
+    void tokenizesChild() {
+        List<Object> tokens = CssSelector.tokenize("div > p");
+        assertEquals(3, tokens.size());
+        assertEquals("div", tokens.get(0));
+        assertEquals('>', tokens.get(1));
+        assertEquals("p", tokens.get(2));
+    }
+
+    @Test
+    void tokenizesAdjacentSibling() {
+        List<Object> tokens = CssSelector.tokenize("h1 + p");
+        assertEquals(3, tokens.size());
+        assertEquals("h1", tokens.get(0));
+        assertEquals('+', tokens.get(1));
+        assertEquals("p", tokens.get(2));
+    }
+
+    @Test
+    void tokenizesComplex() {
+        List<Object> tokens = CssSelector.tokenize("div > p.foo + span .inner");
+        assertEquals(7, tokens.size());
+        assertEquals("div", tokens.get(0));
+        assertEquals('>', tokens.get(1));
+        assertEquals("p.foo", tokens.get(2));
+        assertEquals('+', tokens.get(3));
+        assertEquals("span", tokens.get(4));
+        assertEquals(' ', tokens.get(5));
+        assertEquals(".inner", tokens.get(6));
+    }
+
+    @Test
+    void tokenizesAttributeWithSpaces() {
+        // Brackets protect inner content from tokenization
+        List<Object> tokens = CssSelector.tokenize("a[href^=\"http\"]");
+        assertEquals(1, tokens.size());
+        assertEquals("a[href^=\"http\"]", tokens.get(0));
+    }
 }

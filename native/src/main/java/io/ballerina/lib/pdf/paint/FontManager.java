@@ -4,10 +4,13 @@ import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.font.PDFont;
 import org.apache.pdfbox.pdmodel.font.PDType0Font;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Loads and manages Liberation TTF fonts for PDFBox rendering.
@@ -28,6 +31,7 @@ public class FontManager {
 
     // Key format: "family|bold|italic" e.g. "liberation sans|true|false"
     private final Map<String, PDFont> fontMap = new HashMap<>();
+    private final Set<String> customFamilies = new HashSet<>();
     private PDFont defaultFont;
 
     public void loadFonts(PDDocument document) throws IOException {
@@ -46,6 +50,47 @@ public class FontManager {
         defaultFont = fontMap.get("liberation sans|false|false");
         if (defaultFont == null && !fontMap.isEmpty()) {
             defaultFont = fontMap.values().iterator().next();
+        }
+    }
+
+    /**
+     * Loads custom TTF fonts supplied by the user.
+     * <p>
+     * Each map entry has a key like "MyFont", "MyFont Bold", "MyFont Italic", or "MyFont BoldItalic".
+     * Bold/italic is detected from font metadata first, then from the key name as fallback.
+     * The family name is derived by stripping weight/style suffixes from the key.
+     */
+    public void loadCustomFonts(PDDocument document, Map<String, byte[]> customFonts) throws IOException {
+        for (Map.Entry<String, byte[]> entry : customFonts.entrySet()) {
+            String name = entry.getKey();
+            byte[] fontBytes = entry.getValue();
+
+            PDType0Font font = PDType0Font.load(document, new ByteArrayInputStream(fontBytes));
+
+            // Detect bold/italic from font metadata first, then fall back to key name
+            var descriptor = font.getFontDescriptor();
+            boolean bold;
+            boolean italic;
+            if (descriptor != null && (descriptor.getFontWeight() > 0 || descriptor.getItalicAngle() != 0)) {
+                bold = descriptor.getFontWeight() >= 700;
+                italic = descriptor.getItalicAngle() != 0;
+            } else {
+                String nameLower = name.toLowerCase();
+                bold = nameLower.contains("bold");
+                italic = nameLower.contains("italic");
+            }
+
+            // Derive family name by stripping suffixes
+            String family = name
+                    .replaceAll("(?i)\\s*BoldItalic$", "")
+                    .replaceAll("(?i)\\s*Bold$", "")
+                    .replaceAll("(?i)\\s*Italic$", "")
+                    .toLowerCase()
+                    .trim();
+
+            String key = family + "|" + bold + "|" + italic;
+            fontMap.put(key, font);
+            customFamilies.add(family);
         }
     }
 
@@ -140,6 +185,10 @@ public class FontManager {
         String lower = family.toLowerCase().trim();
         // Strip quotes
         lower = lower.replace("'", "").replace("\"", "");
+        // Check custom fonts first — return directly if a custom family matches
+        if (customFamilies.contains(lower)) {
+            return lower;
+        }
         // Map common families
         if (lower.contains("liberation sans") || lower.contains("arial")
                 || lower.contains("helvetica") || lower.contains("sans-serif")) {

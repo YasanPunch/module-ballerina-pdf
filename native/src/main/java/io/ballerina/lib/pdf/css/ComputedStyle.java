@@ -82,6 +82,10 @@ public class ComputedStyle {
         return get("text-transform", "none");
     }
 
+    public String getVerticalAlign() {
+        return get("vertical-align", "baseline");
+    }
+
     public String getColor() {
         return get("color");
     }
@@ -218,6 +222,34 @@ public class ComputedStyle {
         String val = get("border-spacing");
         if (val == null) return 0;
         return CssValueParser.toPoints(val, containerWidth, fontSize);
+    }
+
+    public String getPosition() {
+        return get("position", "static");
+    }
+
+    public float getTop(float containerSize, float fontSize) {
+        String val = get("top");
+        if (val == null || val.equals("auto")) return Float.NaN;
+        return CssValueParser.toPoints(val, containerSize, fontSize);
+    }
+
+    public float getLeft(float containerSize, float fontSize) {
+        String val = get("left");
+        if (val == null || val.equals("auto")) return Float.NaN;
+        return CssValueParser.toPoints(val, containerSize, fontSize);
+    }
+
+    public float getRight(float containerSize, float fontSize) {
+        String val = get("right");
+        if (val == null || val.equals("auto")) return Float.NaN;
+        return CssValueParser.toPoints(val, containerSize, fontSize);
+    }
+
+    public float getBottom(float containerSize, float fontSize) {
+        String val = get("bottom");
+        if (val == null || val.equals("auto")) return Float.NaN;
+        return CssValueParser.toPoints(val, containerSize, fontSize);
     }
 
     private float parseBorderWidth(String val, float containerWidth, float fontSize) {

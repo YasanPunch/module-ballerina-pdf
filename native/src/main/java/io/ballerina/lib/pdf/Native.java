@@ -1,11 +1,13 @@
 package io.ballerina.lib.pdf;
 
-import io.ballerina.runtime.api.creators.ErrorCreator;
 import io.ballerina.runtime.api.creators.ValueCreator;
 import io.ballerina.runtime.api.utils.StringUtils;
-import io.ballerina.runtime.api.values.BError;
+import io.ballerina.runtime.api.values.BArray;
 import io.ballerina.runtime.api.values.BMap;
 import io.ballerina.runtime.api.values.BString;
+
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Entry point for Ballerina Java interop.
@@ -35,6 +37,21 @@ public final class Native {
             boolean preprocess = getBoolean(options, "preprocess", true);
             String additionalCss = getNullableString(options, "additionalCss");
 
+            // Read custom fonts from nested map
+            Map<String, byte[]> customFonts = null;
+            Object customFontsObj = options.get(StringUtils.fromString("customFonts"));
+            if (customFontsObj instanceof BMap) {
+                @SuppressWarnings("unchecked")
+                BMap<BString, Object> fontsMap = (BMap<BString, Object>) customFontsObj;
+                customFonts = new HashMap<>();
+                for (BString key : fontsMap.getKeys()) {
+                    Object val = fontsMap.get(key);
+                    if (val instanceof BArray bArray) {
+                        customFonts.put(key.getValue(), bArray.getBytes());
+                    }
+                }
+            }
+
             // Read margins from nested PageMargins record
             float marginTop = ConverterOptions.DEFAULT_MARGIN;
             float marginRight = ConverterOptions.DEFAULT_MARGIN;
@@ -57,23 +74,30 @@ public final class Native {
             ConverterOptions opts = new ConverterOptions(
                     fontSize, dims[0], dims[1],
                     marginTop, marginRight, marginBottom, marginLeft,
-                    additionalCss, preprocess);
+                    additionalCss, preprocess, customFonts);
 
-            // Run pipeline
+            // Phase 1: Preprocess HTML
             HtmlPreprocessor preprocessor = new HtmlPreprocessor();
             org.w3c.dom.Document doc;
-            if (preprocess) {
-                doc = preprocessor.preprocess(html.getValue(), opts);
-            } else {
-                doc = preprocessor.parseOnly(html.getValue());
+            try {
+                if (preprocess) {
+                    doc = preprocessor.preprocess(html.getValue(), opts);
+                } else {
+                    doc = preprocessor.parseOnly(html.getValue());
+                }
+            } catch (Exception e) {
+                return DiagnosticLog.htmlParseError(
+                        "HTML parsing failed: " + e.getMessage(), e);
             }
 
+            // Phase 2: Convert to PDF
             HtmlToPdfConverter converter = new HtmlToPdfConverter();
             byte[] pdf = converter.convertToPdf(doc, opts);
 
             return ValueCreator.createArrayValue(pdf);
         } catch (Exception e) {
-            return createConversionError("PDF conversion failed: " + e.getMessage(), e);
+            return DiagnosticLog.renderError(
+                    "PDF rendering failed: " + e.getMessage(), e);
         }
     }
 
@@ -114,15 +138,4 @@ public final class Native {
         return null;
     }
 
-    private static final String CONVERSION_ERROR = "ConversionError";
-
-    private static BError createConversionError(String message, Throwable cause) {
-        BString errorMessage = StringUtils.fromString(message);
-        BError causeError = null;
-        if (cause != null) {
-            causeError = ErrorCreator.createError(StringUtils.fromString(cause.getMessage()));
-        }
-        return ErrorCreator.createError(
-                ModuleUtils.getModule(), CONVERSION_ERROR, errorMessage, causeError, null);
-    }
 }

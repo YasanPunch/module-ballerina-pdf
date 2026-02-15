@@ -7,7 +7,9 @@ import io.ballerina.lib.pdf.util.CssValueParser;
 import org.apache.pdfbox.pdmodel.font.PDFont;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Lays out tables using a unified content-aware auto layout algorithm.
@@ -291,6 +293,7 @@ public class TableLayoutEngine {
     private float layoutRow(TableRowBox row, float[] colWidths, float tableWidth) {
         float maxCellHeight = 0;
         int colIdx = 0;
+        Map<TableCellBox, Float> contentHeights = new HashMap<>();
 
         for (Box child : row.getChildren()) {
             if (child instanceof TableCellBox cell) {
@@ -328,6 +331,7 @@ public class TableLayoutEngine {
                 // Layout cell contents (cells act as block formatting contexts)
                 float cellContentHeight = bfc.layoutChildren(cell, contentWidth);
                 cell.setHeight(cellContentHeight);
+                contentHeights.put(cell, cellContentHeight);
 
                 float totalCellHeight = cellContentHeight
                         + cell.getPaddingTop() + cell.getPaddingBottom()
@@ -363,6 +367,31 @@ public class TableLayoutEngine {
                         - cell.getPaddingTop() - cell.getPaddingBottom()
                         - cell.getBorderTopWidth() - cell.getBorderBottomWidth();
                 cell.setHeight(Math.max(cell.getHeight(), innerHeight));
+            }
+        }
+
+        // Apply vertical-align offset within cells
+        for (Box child : row.getChildren()) {
+            if (child instanceof TableCellBox cell) {
+                float contentHeight = contentHeights.getOrDefault(cell, cell.getHeight());
+                float innerHeight = cell.getHeight();
+                float offset = 0;
+
+                String valign = cell.getStyle() != null
+                        ? cell.getStyle().getVerticalAlign() : "baseline";
+
+                if ("middle".equals(valign)) {
+                    offset = (innerHeight - contentHeight) / 2;
+                } else if ("bottom".equals(valign)) {
+                    offset = innerHeight - contentHeight;
+                }
+                // "top" and "baseline" → no offset (content stays at top)
+
+                if (offset > 0) {
+                    for (Box cellChild : cell.getEffectiveChildren()) {
+                        cellChild.setY(cellChild.getY() + offset);
+                    }
+                }
             }
         }
 

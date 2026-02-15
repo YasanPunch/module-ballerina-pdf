@@ -14,5 +14,12 @@
 // specific language governing permissions and limitations
 // under the License.
 
-# Represents an error that occurs during HTML-to-PDF conversion.
-public type ConversionError distinct error;
+# Base error type for all PDF module errors.
+public type Error distinct error;
+
+# Error during HTML parsing or preprocessing.
+# Returned when the input HTML cannot be parsed into a valid DOM.
+public type HtmlParseError distinct Error;
+
+# Error during the PDF rendering pipeline (layout, painting, or PDF generation).
+public type RenderError distinct Error;

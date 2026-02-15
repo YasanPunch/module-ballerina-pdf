@@ -3,6 +3,9 @@ package io.ballerina.lib.pdf.layout;
 import io.ballerina.lib.pdf.box.*;
 import io.ballerina.lib.pdf.css.ComputedStyle;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * Implements block formatting context: stacks block-level boxes vertically,
  * resolves widths, and delegates inline/table layout to their engines.
@@ -15,7 +18,7 @@ public class BlockFormattingContext {
 
     public BlockFormattingContext(LayoutContext ctx) {
         this.ctx = ctx;
-        this.inlineEngine = new InlineLayoutEngine(ctx.getFontManager(), ctx.getDefaultFontSizePt());
+        this.inlineEngine = new InlineLayoutEngine(ctx.getFontManager(), ctx.getDefaultFontSizePt(), this);
         this.tableEngine = new TableLayoutEngine(this, ctx.getFontManager(), ctx.getDefaultFontSizePt());
     }
 
@@ -47,12 +50,28 @@ public class BlockFormattingContext {
         container.clearLayoutChildren();
         if (container.getChildren().isEmpty()) return 0;
 
-        // Determine if children are all inline or contain blocks
+        // Partition absolute-positioned children from normal flow
+        List<Box> flowChildren = new ArrayList<>();
+        List<Box> absoluteChildren = new ArrayList<>();
+        for (Box child : container.getChildren()) {
+            if (child instanceof BlockBox bb && bb.getStyle() != null
+                    && "absolute".equals(bb.getStyle().getPosition())) {
+                absoluteChildren.add(bb);
+            } else {
+                flowChildren.add(child);
+            }
+        }
+
+        // Determine if flow children are all inline or contain blocks
         boolean hasBlockChildren = false;
         boolean hasInlineChildren = false;
 
-        for (Box child : container.getChildren()) {
-            if (child instanceof BlockBox || child instanceof TableBox
+        for (Box child : flowChildren) {
+            if (child instanceof BlockBox bb
+                    && bb.getStyle() != null
+                    && "inline-block".equals(bb.getStyle().getDisplay())) {
+                hasInlineChildren = true;
+            } else if (child instanceof BlockBox || child instanceof TableBox
                     || child instanceof TableRowGroupBox || child instanceof TableRowBox) {
                 hasBlockChildren = true;
             } else {
@@ -62,13 +81,17 @@ public class BlockFormattingContext {
 
         if (!hasBlockChildren) {
             // All inline: use inline layout engine
-            return inlineEngine.layout(container, availableWidth);
+            float height = inlineEngine.layout(container, availableWidth);
+            if (!absoluteChildren.isEmpty()) {
+                layoutAbsoluteChildren(container, absoluteChildren, availableWidth, height);
+            }
+            return height;
         }
 
         // Block layout: stack children vertically
         float cursorY = 0;
 
-        for (Box child : container.getChildren()) {
+        for (Box child : flowChildren) {
             if (child instanceof TableBox table) {
                 // Re-resolve box model with actual width
                 resolveBoxModelWithWidth(table, availableWidth);
@@ -98,6 +121,11 @@ public class BlockFormattingContext {
                         + tableHeight
                         + table.getPaddingBottom() + table.getBorderBottomWidth()
                         + table.getMarginBottom();
+
+                // Apply relative offset (visual only, does not affect cursorY)
+                if (tableStyle != null && "relative".equals(tableStyle.getPosition())) {
+                    applyRelativeOffset(table, availableWidth, tableHeight);
+                }
 
             } else if (child instanceof BlockBox block) {
                 // Re-resolve box model with actual width
@@ -148,6 +176,11 @@ public class BlockFormattingContext {
                         + block.getPaddingBottom() + block.getBorderBottomWidth()
                         + block.getMarginBottom();
 
+                // Apply relative offset (visual only, does not affect cursorY)
+                if ("relative".equals(style.getPosition())) {
+                    applyRelativeOffset(block, availableWidth, contentHeight);
+                }
+
             } else {
                 // Inline content mixed with blocks — position at cursor
                 resolveBoxModelWithWidth(child, availableWidth);
@@ -157,7 +190,111 @@ public class BlockFormattingContext {
             }
         }
 
+        // Position absolute children after flow layout completes
+        if (!absoluteChildren.isEmpty()) {
+            layoutAbsoluteChildren(container, absoluteChildren, availableWidth, cursorY);
+        }
+
         return cursorY;
+    }
+
+    /**
+     * Applies CSS relative positioning offsets to a box.
+     * Per CSS 2.1 §9.4.3: top takes precedence over bottom, left over right.
+     * The box's flow position is already set; this only adjusts the visual position.
+     */
+    private void applyRelativeOffset(Box box, float containerWidth, float containerHeight) {
+        ComputedStyle style = box.getStyle();
+        float fontSize = style.getFontSize(ctx.getDefaultFontSizePt());
+        float top = style.getTop(containerHeight, fontSize);
+        float left = style.getLeft(containerWidth, fontSize);
+        float right = style.getRight(containerWidth, fontSize);
+        float bottom = style.getBottom(containerHeight, fontSize);
+
+        if (!Float.isNaN(top))         box.setY(box.getY() + top);
+        else if (!Float.isNaN(bottom)) box.setY(box.getY() - bottom);
+
+        if (!Float.isNaN(left))        box.setX(box.getX() + left);
+        else if (!Float.isNaN(right))  box.setX(box.getX() - right);
+    }
+
+    /**
+     * Lays out absolute-positioned children and appends them after flow children
+     * so they paint on top.
+     */
+    private void layoutAbsoluteChildren(Box container, List<Box> absoluteChildren,
+                                         float containerWidth, float containerHeight) {
+        for (Box absChild : absoluteChildren) {
+            layoutAbsoluteChild((BlockBox) absChild, containerWidth, containerHeight);
+        }
+
+        // Reorder for painting: flow children first, then absolute on top
+        List<Box> ordered = new ArrayList<>();
+        List<Box> effective = container.getEffectiveChildren();
+        if (effective != null) {
+            for (Box child : effective) {
+                if (!absoluteChildren.contains(child)) {
+                    ordered.add(child);
+                }
+            }
+        }
+        ordered.addAll(absoluteChildren);
+        container.setLayoutChildren(ordered);
+    }
+
+    /**
+     * Positions and sizes a single absolute-positioned child.
+     * The child is removed from normal flow and positioned relative to its
+     * containing block using top/left/right/bottom offsets.
+     */
+    private void layoutAbsoluteChild(BlockBox box, float containerWidth, float containerHeight) {
+        ComputedStyle style = box.getStyle();
+        float fontSize = style.getFontSize(ctx.getDefaultFontSizePt());
+        resolveBoxModelWithWidth(box, containerWidth);
+
+        // Resolve width
+        float explicitWidth = style.getWidth(containerWidth, fontSize);
+        float contentWidth;
+        if (explicitWidth > 0) {
+            contentWidth = explicitWidth;
+        } else {
+            contentWidth = containerWidth
+                    - box.getMarginLeft() - box.getMarginRight()
+                    - box.getBorderLeftWidth() - box.getBorderRightWidth()
+                    - box.getPaddingLeft() - box.getPaddingRight();
+            contentWidth = Math.max(0, contentWidth);
+        }
+        box.setWidth(contentWidth);
+
+        // Layout contents
+        float contentHeight = layoutChildren(box, contentWidth);
+        float explicitHeight = style.getHeight(containerHeight, fontSize);
+        if (explicitHeight > 0) contentHeight = explicitHeight;
+        box.setHeight(contentHeight);
+
+        // Position using offsets
+        float top = style.getTop(containerHeight, fontSize);
+        float left = style.getLeft(containerWidth, fontSize);
+        float right = style.getRight(containerWidth, fontSize);
+        float bottom = style.getBottom(containerHeight, fontSize);
+
+        // Horizontal positioning
+        if (!Float.isNaN(left)) {
+            box.setX(left);
+        } else if (!Float.isNaN(right)) {
+            box.setX(containerWidth - box.getOuterWidth() + box.getMarginLeft() - right);
+        } else {
+            box.setX(0);
+        }
+
+        // Vertical positioning
+        if (!Float.isNaN(top)) {
+            box.setY(top);
+        } else if (!Float.isNaN(bottom)) {
+            box.setY(containerHeight - box.getOuterHeight() + box.getMarginTop() - bottom);
+        } else {
+            box.setY(0);
+        }
     }
 
     /**

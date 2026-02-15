@@ -14,6 +14,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
+import ballerina/io;
 import ballerina/test;
 
 function assertValidPdf(byte[] pdf, string msg) {
@@ -132,11 +133,20 @@ function testPreprocessDisabled() returns error? {
 }
 
 @test:Config {}
-function testErrorTypeIsConversionError() {
-    // Pass content that triggers an internal error to verify the error type.
-    // A null byte sequence in HTML is unlikely to cause a conversion error with
-    // the current pipeline, so we verify the positive path — a successful result
-    // is not a ConversionError.
-    byte[]|ConversionError result = convertToPdf("<p>Valid HTML</p>");
-    test:assertTrue(result is byte[], "Expected successful conversion, not ConversionError");
+function testErrorTypeIsError() {
+    // Verify the positive path — a successful result is not an Error.
+    byte[]|Error result = convertToPdf("<p>Valid HTML</p>");
+    test:assertTrue(result is byte[], "Expected successful conversion, not Error");
+}
+
+@test:Config {}
+function testConversionWithCustomFont() returns error? {
+    byte[] fontBytes = check io:fileReadBytes("../native/src/main/resources/fonts/LiberationSans-Regular.ttf");
+    map<byte[]> fonts = {"TestFont": fontBytes};
+    byte[] pdf = check convertToPdf(
+        string `<html><head><style>body { font-family: 'TestFont'; }</style></head>
+                <body><p>Custom font rendering</p></body></html>`,
+        customFonts = fonts
+    );
+    assertValidPdf(pdf, "Custom font conversion");
 }

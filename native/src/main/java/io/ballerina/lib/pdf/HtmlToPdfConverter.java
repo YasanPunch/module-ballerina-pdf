@@ -58,6 +58,9 @@ public class HtmlToPdfConverter {
             // 1. Load fonts
             FontManager fontManager = new FontManager();
             fontManager.loadFonts(pdfDoc);
+            if (options.getCustomFonts() != null && !options.getCustomFonts().isEmpty()) {
+                fontManager.loadCustomFonts(pdfDoc, options.getCustomFonts());
+            }
 
             // 2. Parse CSS from <style> blocks
             CssParser cssParser = new CssParser();

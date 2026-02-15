@@ -17,10 +17,13 @@ public class InlineLayoutEngine {
 
     private final FontManager fontManager;
     private final float defaultFontSizePt;
+    private final BlockFormattingContext bfc;
 
-    public InlineLayoutEngine(FontManager fontManager, float defaultFontSizePt) {
+    public InlineLayoutEngine(FontManager fontManager, float defaultFontSizePt,
+                               BlockFormattingContext bfc) {
         this.fontManager = fontManager;
         this.defaultFontSizePt = defaultFontSizePt;
+        this.bfc = bfc;
     }
 
     /**
@@ -31,9 +34,9 @@ public class InlineLayoutEngine {
         List<Box> inlineChildren = container.getChildren();
         if (inlineChildren.isEmpty()) return 0;
 
-        // Collect all leaf inline items (text runs, replaced boxes)
+        // Collect all leaf inline items (text runs, replaced boxes, inline-blocks)
         List<InlineItem> items = new ArrayList<>();
-        collectInlineItems(inlineChildren, items);
+        collectInlineItems(inlineChildren, items, availableWidth);
         if (items.isEmpty()) return 0;
 
         // Break into lines
@@ -59,8 +62,13 @@ public class InlineLayoutEngine {
             for (InlineItem item : line.items) {
                 item.box.setX(cx);
                 item.box.setY(cursorY);
-                item.box.setWidth(item.width);
-                item.box.setHeight(lineHeight);
+                // Only set width/height for text runs. Inline-block and replaced boxes
+                // have their own dimensions computed during layout — overwriting would
+                // corrupt their box model (e.g., setWidth(outerWidth) double-counts padding).
+                if (item.box instanceof TextRun) {
+                    item.box.setWidth(item.width);
+                    item.box.setHeight(lineHeight);
+                }
                 cx += item.width;
             }
 
@@ -82,10 +90,13 @@ public class InlineLayoutEngine {
     }
 
     /**
-     * Recursively collects inline items (text runs, replaced boxes) from inline boxes.
+     * Recursively collects inline items (text runs, replaced boxes, inline-blocks) from inline boxes.
      */
-    private void collectInlineItems(List<Box> boxes, List<InlineItem> items) {
+    private void collectInlineItems(List<Box> boxes, List<InlineItem> items, float availableWidth) {
         for (Box box : boxes) {
+            if (box.getStyle() != null && "absolute".equals(box.getStyle().getPosition())) {
+                continue; // absolute-positioned elements are handled by BFC
+            }
             if (box instanceof TextRun textRun) {
                 resolveTextMetrics(textRun);
                 // Split text into words for line breaking
@@ -99,6 +110,7 @@ public class InlineLayoutEngine {
                     wordRun.setFont(textRun.getFont());
                     wordRun.setFontSize(textRun.getFontSize());
                     wordRun.setSuperscript(textRun.isSuperscript());
+                    wordRun.setSubscript(textRun.isSubscript());
                     float wordWidth = fontManager.measureText(word, textRun.getFont(), textRun.getFontSize());
                     wordRun.setTextWidth(wordWidth);
                     items.add(new InlineItem(wordRun, wordWidth,
@@ -108,9 +120,23 @@ public class InlineLayoutEngine {
                 float w = replaced.getIntrinsicWidth();
                 float h = replaced.getIntrinsicHeight();
                 items.add(new InlineItem(replaced, w, h));
+            } else if (box instanceof BlockBox bb
+                    && bb.getStyle() != null
+                    && "inline-block".equals(bb.getStyle().getDisplay())) {
+                // Inline-block: resolve box model, compute shrink-to-fit content width, lay out
+                bfc.resolveBoxModelWithWidth(bb, availableWidth);
+                float contentWidth = computeShrinkToFitWidth(bb, availableWidth);
+                bb.setWidth(contentWidth);
+
+                float contentHeight = bfc.layoutChildren(bb, contentWidth);
+                bb.setHeight(contentHeight);
+
+                float outerWidth = bb.getOuterWidth();
+                float outerHeight = bb.getOuterHeight();
+                items.add(new InlineItem(bb, outerWidth, outerHeight));
             } else if (box instanceof InlineBox) {
                 // Recurse into inline box children
-                collectInlineItems(box.getChildren(), items);
+                collectInlineItems(box.getChildren(), items, availableWidth);
             }
         }
     }
@@ -128,10 +154,13 @@ public class InlineLayoutEngine {
         boolean italic = style.isItalic();
         float fontSize = style.getFontSize(defaultFontSizePt);
 
-        // Check for superscript
+        // Check for superscript / subscript
         String verticalAlign = style.get("vertical-align");
         if ("super".equals(verticalAlign)) {
             textRun.setSuperscript(true);
+            fontSize *= 0.7f;
+        } else if ("sub".equals(verticalAlign)) {
+            textRun.setSubscript(true);
             fontSize *= 0.7f;
         }
 
@@ -205,6 +234,101 @@ public class InlineLayoutEngine {
             }
         }
         return sb.toString();
+    }
+
+    /**
+     * Computes shrink-to-fit width per CSS 2.1 §10.3.9.
+     * Formula: min(max-content, max(min-content, available))
+     */
+    private float computeShrinkToFitWidth(BlockBox box, float availableWidth) {
+        ComputedStyle style = box.getStyle();
+        float fontSize = style.getFontSize(defaultFontSizePt);
+        float explicitWidth = style.getWidth(availableWidth, fontSize);
+        if (explicitWidth > 0) {
+            return explicitWidth;
+        }
+
+        float maxContent = measureMaxContentWidth(box);
+        float minContent = measureMinContentWidth(box);
+        float shrink = Math.min(maxContent, Math.max(minContent, availableWidth));
+
+        float maxW = style.getMaxWidth(availableWidth, fontSize);
+        float minW = style.getMinWidth(availableWidth, fontSize);
+        return Math.max(minW, Math.min(shrink, maxW));
+    }
+
+    private float measureMaxContentWidth(Box box) {
+        if (box instanceof TextRun textRun) {
+            return measureTextRunWidth(textRun);
+        }
+        float total = 0;
+        for (Box child : box.getChildren()) {
+            total += measureMaxContentWidth(child);
+        }
+        return total;
+    }
+
+    private float measureMinContentWidth(Box box) {
+        if (box instanceof TextRun textRun) {
+            return measureWidestWord(textRun);
+        }
+        float max = 0;
+        for (Box child : box.getChildren()) {
+            max = Math.max(max, measureMinContentWidth(child));
+        }
+        return max;
+    }
+
+    private float measureTextRunWidth(TextRun textRun) {
+        String text = textRun.getText();
+        if (text == null || text.isEmpty()) return 0;
+
+        ComputedStyle style = textRun.getStyle();
+        PDFont font;
+        float fontSize;
+        if (style != null) {
+            String family = CssValueParser.parsePrimaryFontFamily(style.getFontFamily());
+            font = fontManager.getFont(family, style.isBold(), style.isItalic());
+            fontSize = style.getFontSize(defaultFontSizePt);
+        } else {
+            font = fontManager.getDefaultFont();
+            fontSize = defaultFontSizePt;
+        }
+
+        // Measure word-by-word to match inline layout's word splitting,
+        // preventing floating-point mismatch between shrink-to-fit and actual layout
+        float total = 0;
+        for (String word : text.split("(?<= )")) {
+            if (!word.isEmpty()) {
+                total += fontManager.measureText(word, font, fontSize);
+            }
+        }
+        return total;
+    }
+
+    private float measureWidestWord(TextRun textRun) {
+        String text = textRun.getText();
+        if (text == null || text.isEmpty()) return 0;
+
+        ComputedStyle style = textRun.getStyle();
+        PDFont font;
+        float fontSize;
+        if (style != null) {
+            String family = CssValueParser.parsePrimaryFontFamily(style.getFontFamily());
+            font = fontManager.getFont(family, style.isBold(), style.isItalic());
+            fontSize = style.getFontSize(defaultFontSizePt);
+        } else {
+            font = fontManager.getDefaultFont();
+            fontSize = defaultFontSizePt;
+        }
+
+        float maxWidth = 0;
+        for (String word : text.split("\\s+")) {
+            if (!word.isEmpty()) {
+                maxWidth = Math.max(maxWidth, fontManager.measureText(word, font, fontSize));
+            }
+        }
+        return maxWidth;
     }
 
     record InlineItem(Box box, float width, float height) {}
