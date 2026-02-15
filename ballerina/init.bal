@@ -16,12 +16,10 @@
 
 import ballerina/jballerina.java;
 
-# Converts HTML content to PDF bytes.
-#
-# + html - The HTML string to convert (can be a full document or fragment)
-# + options - Conversion options (all optional with defaults)
-# + return - PDF file content as a byte array, or a ConversionError
-public isolated function convertToPdf(string html, *ConversionOptions options)
-    returns byte[]|ConversionError = @java:Method {
-    'class: "io.ballerina.lib.pdf.Native"
+function init() returns error? {
+    setModule();
+}
+
+isolated function setModule() = @java:Method {
+    'class: "io.ballerina.lib.pdf.ModuleUtils"
 } external;

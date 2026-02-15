@@ -1,45 +1,36 @@
 # Examples
 
-The `ballerinax/pdf` connector provides practical examples illustrating usage in various scenarios.
+The `ballerina/pdf` module provides practical examples illustrating usage in various scenarios.
 
-[//]: # (TODO: Add examples)
-1. 
-2. 
+1. [CIBIL Credit Report](./cibil-report/) - Convert a CIBIL credit report HTML file to PDF with custom CSS overrides, font size, and margins.
+
+   Produces `resources/cibil_output.pdf`. Open the input HTML (`resources/49511893_Cons_CIR_NAMRATA.html`) in a browser and compare side-by-side with the PDF to verify layout fidelity.
 
 ## Prerequisites
 
-[//]: # (TODO: Add prerequisites)
+- Ballerina distribution 2201.13.1 or later
 
-## Running an example
+## Running examples during development
 
-Execute the following commands to build an example from the source:
+Examples depend on `ballerina/pdf` being available as a package. Since the module isn't published to Ballerina Central yet, you must use the provided build script to pack and push it locally before running examples.
 
-* To build an example:
+From the `examples/` directory:
 
-    ```bash
-    bal build
-    ```
+```bash
+# Build all examples (packs the module locally first)
+./build.sh build
 
-* To run an example:
+# Build and run all examples
+./build.sh run
+```
 
-    ```bash
-    bal run
-    ```
+**Warning**: The build script writes the module bala to your local Ballerina central repository as a workaround. This may modify your local Ballerina repositories.
 
-## Building the examples with the local module
+## Running examples after the module is published
 
-**Warning**: Due to the absence of support for reading local repositories for single Ballerina files, the Bala of the module is manually written to the central repository as a workaround. Consequently, the bash script may modify your local Ballerina repositories.
+Once `ballerina/pdf` is available on Ballerina Central, you can run any example directly:
 
-Execute the following commands to build all the examples against the changes you have made to the module locally:
-
-* To build all the examples:
-
-    ```bash
-    ./build.sh build
-    ```
-
-* To run all the examples:
-
-    ```bash
-    ./build.sh run
-    ```
+```bash
+cd examples/cibil-report
+bal run
+```

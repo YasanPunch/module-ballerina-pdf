@@ -25,7 +25,7 @@ plugins {
 description = 'Pdf - Ballerina'
 
 def packageName = "pdf"
-def packageOrg = "ballerinax"
+def packageOrg = "ballerina"
 def tomlVersion = stripBallerinaExtensionVersion("${project.version}")
 def ballerinaTomlFilePlaceHolder = new File("${project.rootDir}/build-config/resources/Ballerina.toml")
 def ballerinaTomlFile = new File("$project.projectDir/Ballerina.toml")
@@ -47,9 +47,10 @@ def stripBallerinaExtensionVersion(String extVersion) {
 ballerina {
     packageOrganization = packageOrg
     module = packageName
+    langVersion = project.ballerinaLangVersion
     testCoverageParam = "--code-coverage --coverage-format=xml"
-    isConnector = true
-    platform = "any"
+    isConnector = false
+    platform = "java21"
 }
 
 task updateTomlFiles {
@@ -59,6 +60,8 @@ task updateTomlFiles {
         ballerinaTomlFile.text = newBallerinaToml
     }
 }
+
+updateTomlFiles.dependsOn copyStdlibs
 
 task commitTomlFiles {
     doLast {
@@ -95,6 +98,8 @@ clean {
     delete 'build'
 }
 
+build.dependsOn ":pdf-native:build"
 build.dependsOn "generatePomFileForMavenPublication"
+test.dependsOn ":pdf-native:build"
 publishToMavenLocal.dependsOn build
 publish.dependsOn build

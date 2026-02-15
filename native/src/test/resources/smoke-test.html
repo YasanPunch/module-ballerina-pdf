@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-16"?>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<style>
+  body { font-family: Arial, Helvetica, sans-serif; font-size: 12px; }
+  h1 { color: #333; }
+  table { border-collapse: collapse; width: 800px; }
+  th { background-color: #4f90a9; color: white; padding: 8px; text-align: left; font-weight: bold; }
+  td { border: 1px solid #ccc; padding: 6px; }
+  tr:nth-child(even) { background-color: #f2f2f2; }
+  .header-bar { background-color: #f5c518; padding: 10px; font-weight: bold; font-size: 16px; margin-bottom: 10px; }
+  .score-box { background-color: #e8e8e8; padding: 15px; border: 2px solid #999; display: inline-block; }
+  .summary { font-family:font-family:Arial; font-size: 11px; }
+</style>
+</head>
+<body>
+  <div class="header-bar">SMOKE TEST - HTML to PDF Converter</div>
+
+  <!-- Base64 image test (10x10 red pixel PNG) -->
+  <p>Logo test: <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAIAAAACUFjqAAAAEklEQVR4nGP4z8CAB+GTG8HSALfKY52fTcuYAAAAAElFTkSuQmCC" width="50" height="50" /></p>
+
+  <div class="score-box">
+    <strong>Score:</strong> 750
+  </div>
+
+  <h1>Consumer Information</h1>
+  <table>
+    <tr>
+      <th>Field</th>
+      <th>Value</th>
+      <th>Status</th>
+    </tr>
+    <tr>
+      <td>Name</td>
+      <td>John Doe</td>
+      <td>Verified</td>
+    </tr>
+    <tr>
+      <td>Date of Birth</td>
+      <td>1990-01-15</td>
+      <td>Verified</td>
+    </tr>
+    <tr>
+      <td>PAN</td>
+      <td>ABCDE1234F</td>
+      <td>Active</td>
+    </tr>
+    <tr>
+      <td>Phone</td>
+      <td>+91 98765 43210</td>
+      <td>Active</td>
+    </tr>
+  </table>
+
+  <h1>Account Summary</h1>
+  <table>
+    <tr>
+      <th>Account Type</th>
+      <th>Count</th>
+      <th>Balance</th>
+      <th>Overdue</th>
+    </tr>
+    <tr>
+      <td>Credit Card</td>
+      <td>2</td>
+      <td>Rs. 45,000</td>
+      <td>Rs. 0</td>
+    </tr>
+    <tr>
+      <td>Personal Loan</td>
+      <td>1</td>
+      <td>Rs. 2,50,000</td>
+      <td>Rs. 0</td>
+    </tr>
+    <tr>
+      <td>Home Loan</td>
+      <td>1</td>
+      <td>Rs. 35,00,000</td>
+      <td>Rs. 0</td>
+    </tr>
+  </table>
+
+  <p class="summary">This is a summary section to test the duplicate font-family CSS bug fix.</p>
+
+  <div />
+
+  <p style="font-size: 8px; color: #666;">Footer: Generated for testing purposes only. &copy; 2025</p>
+</body>
+</html>

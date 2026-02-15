@@ -14,14 +14,5 @@
 // specific language governing permissions and limitations
 // under the License.
 
-import ballerina/jballerina.java;
-
-# Converts HTML content to PDF bytes.
-#
-# + html - The HTML string to convert (can be a full document or fragment)
-# + options - Conversion options (all optional with defaults)
-# + return - PDF file content as a byte array, or a ConversionError
-public isolated function convertToPdf(string html, *ConversionOptions options)
-    returns byte[]|ConversionError = @java:Method {
-    'class: "io.ballerina.lib.pdf.Native"
-} external;
+# Represents an error that occurs during HTML-to-PDF conversion.
+public type ConversionError distinct error;
