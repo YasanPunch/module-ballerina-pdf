@@ -19,6 +19,7 @@ public final class DiagnosticLog {
     private static final String ERROR = "Error";
     private static final String HTML_PARSE_ERROR = "HtmlParseError";
     private static final String RENDER_ERROR = "RenderError";
+    private static final String READ_ERROR = "ReadError";
 
     public static BError error(String message) {
         return createError(ERROR, message, null);
@@ -34,6 +35,10 @@ public final class DiagnosticLog {
 
     public static BError renderError(String message, Throwable cause) {
         return createError(RENDER_ERROR, message, cause);
+    }
+
+    public static BError readError(String message, Throwable cause) {
+        return createError(READ_ERROR, message, cause);
     }
 
     private static BError createError(String errorType, String message, Throwable cause) {

@@ -489,4 +489,153 @@ class HtmlToPdfConverterTest {
         assertTrue(text.contains("750"), "Should contain score '750', got: " + text);
     }
 
+    // --- Float layout integration tests ---
+
+    @Test
+    void rendersFloatLeftWithText() throws Exception {
+        String html = "<html><body>"
+                + "<div style=\"float: left; width: 100px; height: 50px; background-color: #ccc;\">Sidebar</div>"
+                + "<p>Main content that flows beside the floated element</p>"
+                + "</body></html>";
+        org.w3c.dom.Document doc = preprocessor.preprocess(html);
+        byte[] pdf = converter.convertToPdf(doc);
+
+        String text = extractText(pdf);
+        assertTrue(text.contains("Sidebar"), "Should contain float content 'Sidebar', got: " + text);
+        assertTrue(text.contains("Main content"), "Should contain flow text 'Main content', got: " + text);
+    }
+
+    @Test
+    void rendersFloatLeftAndRight() throws Exception {
+        String html = "<html><body>"
+                + "<div style=\"float: left; width: 100px;\">Left float</div>"
+                + "<div style=\"float: right; width: 100px;\">Right float</div>"
+                + "<p>Content between floats</p>"
+                + "</body></html>";
+        org.w3c.dom.Document doc = preprocessor.preprocess(html);
+        byte[] pdf = converter.convertToPdf(doc);
+
+        String text = extractText(pdf);
+        assertTrue(text.contains("Left float"), "Should contain 'Left float', got: " + text);
+        assertTrue(text.contains("Right float"), "Should contain 'Right float', got: " + text);
+        assertTrue(text.contains("Content between"), "Should contain middle text, got: " + text);
+    }
+
+    @Test
+    void rendersClearBoth() throws Exception {
+        String html = "<html><body>"
+                + "<div style=\"float: left; width: 150px; height: 80px;\">Float A</div>"
+                + "<div style=\"float: right; width: 150px; height: 100px;\">Float B</div>"
+                + "<div style=\"clear: both;\">Cleared footer content</div>"
+                + "</body></html>";
+        org.w3c.dom.Document doc = preprocessor.preprocess(html);
+        byte[] pdf = converter.convertToPdf(doc);
+
+        String text = extractText(pdf);
+        assertTrue(text.contains("Float A"), "Should contain 'Float A', got: " + text);
+        assertTrue(text.contains("Float B"), "Should contain 'Float B', got: " + text);
+        assertTrue(text.contains("Cleared footer"), "Should contain cleared content, got: " + text);
+    }
+
+    // --- CSS at-rule integration tests ---
+
+    @Test
+    void rendersHtmlWithMediaQueries() throws Exception {
+        String html = "<html><head><style>"
+                + "@media screen { .screen-only { color: green; } }"
+                + "@media print { p { font-weight: bold; } }"
+                + "body { font-family: 'Liberation Sans'; }"
+                + "p { color: red; }"
+                + "</style></head><body>"
+                + "<p>Content with media queries</p>"
+                + "</body></html>";
+        org.w3c.dom.Document doc = preprocessor.preprocess(html);
+        byte[] pdf = converter.convertToPdf(doc);
+
+        assertTrue(pdf.length > 0, "PDF should not be empty");
+        String text = extractText(pdf);
+        assertTrue(text.contains("Content with media queries"),
+                "Should render text from HTML with @media blocks, got: " + text);
+    }
+
+    // --- M3b CSS visual features integration tests ---
+
+    @Test
+    void rendersHtmlWithBorderRadius() throws Exception {
+        String html = "<html><head><style>"
+                + ".card { border-radius: 10px; background-color: #eef; border: 1px solid #999; padding: 10px; }"
+                + "</style></head><body>"
+                + "<div class=\"card\">Rounded card content</div>"
+                + "</body></html>";
+        org.w3c.dom.Document doc = preprocessor.preprocess(html);
+        byte[] pdf = converter.convertToPdf(doc);
+
+        String text = extractText(pdf);
+        assertTrue(text.contains("Rounded card content"),
+                "Should render text inside border-radius element, got: " + text);
+    }
+
+    @Test
+    void rendersHtmlWithBoxShadow() throws Exception {
+        String html = "<html><head><style>"
+                + ".shadow { box-shadow: 2px 2px 5px rgba(0,0,0,0.3); padding: 10px; }"
+                + "</style></head><body>"
+                + "<div class=\"shadow\">Shadow box content</div>"
+                + "</body></html>";
+        org.w3c.dom.Document doc = preprocessor.preprocess(html);
+        byte[] pdf = converter.convertToPdf(doc);
+
+        String text = extractText(pdf);
+        assertTrue(text.contains("Shadow box content"),
+                "Should render text inside box-shadow element, got: " + text);
+    }
+
+    @Test
+    void rendersHtmlWithOpacity() throws Exception {
+        String html = "<html><head><style>"
+                + ".faded { opacity: 0.5; background-color: rgba(255,0,0,0.3); padding: 10px; }"
+                + "</style></head><body>"
+                + "<div class=\"faded\">Semi-transparent content</div>"
+                + "</body></html>";
+        org.w3c.dom.Document doc = preprocessor.preprocess(html);
+        byte[] pdf = converter.convertToPdf(doc);
+
+        String text = extractText(pdf);
+        assertTrue(text.contains("Semi-transparent content"),
+                "Should render text with opacity, got: " + text);
+    }
+
+    @Test
+    void rendersHtmlWithLetterSpacing() throws Exception {
+        String html = "<html><head><style>"
+                + ".spaced { letter-spacing: 2px; word-spacing: 5px; }"
+                + "</style></head><body>"
+                + "<p class=\"spaced\">Spaced out text here</p>"
+                + "</body></html>";
+        org.w3c.dom.Document doc = preprocessor.preprocess(html);
+        byte[] pdf = converter.convertToPdf(doc);
+
+        String text = extractText(pdf);
+        assertTrue(text.contains("Spaced"),
+                "Should render text with letter/word spacing, got: " + text);
+    }
+
+    @Test
+    void rendersHtmlWithMarginCollapsing() throws Exception {
+        String html = "<html><head><style>"
+                + "p { margin-bottom: 20px; margin-top: 10px; }"
+                + "</style></head><body>"
+                + "<p>First paragraph</p>"
+                + "<p>Second paragraph</p>"
+                + "<p>Third paragraph</p>"
+                + "</body></html>";
+        org.w3c.dom.Document doc = preprocessor.preprocess(html);
+        byte[] pdf = converter.convertToPdf(doc);
+
+        String text = extractText(pdf);
+        assertTrue(text.contains("First paragraph"), "Should contain first paragraph, got: " + text);
+        assertTrue(text.contains("Second paragraph"), "Should contain second paragraph, got: " + text);
+        assertTrue(text.contains("Third paragraph"), "Should contain third paragraph, got: " + text);
+    }
+
 }

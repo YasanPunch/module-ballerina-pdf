@@ -38,6 +38,7 @@ public final class ModuleUtils {
      * @param env Ballerina environment
      */
     public static void setModule(Environment env) {
+        System.setProperty("java.awt.headless", "true");
         module = env.getCurrentModule();
     }
 

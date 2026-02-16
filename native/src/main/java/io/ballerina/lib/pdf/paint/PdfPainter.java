@@ -7,6 +7,7 @@ import io.ballerina.lib.pdf.layout.PageBreaker;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.font.PDFont;
 import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
+import org.apache.pdfbox.pdmodel.graphics.state.PDExtendedGraphicsState;
 
 import java.awt.Color;
 import java.io.IOException;
@@ -74,6 +75,9 @@ public class PdfPainter {
         float borderBoxW = box.getBorderBoxWidth();
         float borderBoxH = box.getBorderBoxHeight();
 
+        // Paint box-shadow (rendered beneath background)
+        paintBoxShadow(box, stream, pdfX, absY - clipTop, borderBoxW, borderBoxH);
+
         // Paint background
         paintBackground(box, stream, pdfX, absY - clipTop, borderBoxW, borderBoxH);
 
@@ -103,13 +107,32 @@ public class PdfPainter {
         ComputedStyle style = box.getStyle();
         if (style == null) return;
 
+        float fontSize = style.getFontSize(layoutContext.getDefaultFontSizePt());
+        float tlr = style.getBorderTopLeftRadius(width, fontSize);
+        float trr = style.getBorderTopRightRadius(width, fontSize);
+        float brr = style.getBorderBottomRightRadius(width, fontSize);
+        float blr = style.getBorderBottomLeftRadius(width, fontSize);
+        boolean hasRadius = tlr > 0 || trr > 0 || brr > 0 || blr > 0;
+
         String bgColor = style.getBackgroundColor();
         Color color = ColorParser.parse(bgColor);
         if (color != null && color.getAlpha() > 0) {
+            float alpha = (color.getAlpha() / 255f) * style.getOpacity();
             float pdfY = toPdfY(layoutY, height);
+            if (alpha < 1.0f) {
+                stream.saveGraphicsState();
+                applyAlpha(stream, alpha, false);
+            }
             stream.setNonStrokingColor(color.getRed() / 255f, color.getGreen() / 255f, color.getBlue() / 255f);
-            stream.addRect(pdfX, pdfY, width, height);
+            if (hasRadius) {
+                addRoundedRectPath(stream, pdfX, pdfY, width, height, tlr, trr, brr, blr);
+            } else {
+                stream.addRect(pdfX, pdfY, width, height);
+            }
             stream.fill();
+            if (alpha < 1.0f) {
+                stream.restoreGraphicsState();
+            }
         }
 
         // Background image (base64 data URL via CSS)
@@ -123,43 +146,150 @@ public class PdfPainter {
         }
     }
 
+    /**
+     * Paints a box-shadow approximation using concentric filled shapes with decreasing opacity.
+     * True Gaussian blur is not available in PDF; this uses layered rects as an approximation.
+     */
+    private void paintBoxShadow(Box box, PDPageContentStream stream,
+                                 float pdfX, float layoutY, float width, float height) throws IOException {
+        ComputedStyle style = box.getStyle();
+        if (style == null) return;
+
+        float fontSize = style.getFontSize(layoutContext.getDefaultFontSizePt());
+        ComputedStyle.BoxShadow shadow = style.getBoxShadow(width, fontSize);
+        if (shadow == null) return;
+
+        Color shadowColor = ColorParser.parse(shadow.color());
+        if (shadowColor == null) shadowColor = new Color(0, 0, 0, 128);
+
+        float baseAlpha = (shadowColor.getAlpha() / 255f) * style.getOpacity();
+        float pdfY = toPdfY(layoutY, height);
+
+        // Resolve border-radius for shadow shape
+        float tlr = style.getBorderTopLeftRadius(width, fontSize);
+        float trr = style.getBorderTopRightRadius(width, fontSize);
+        float brr = style.getBorderBottomRightRadius(width, fontSize);
+        float blr = style.getBorderBottomLeftRadius(width, fontSize);
+        boolean hasRadius = tlr > 0 || trr > 0 || brr > 0 || blr > 0;
+
+        // Approximate blur with concentric layers
+        int layers = shadow.blur() > 0 ? 4 : 1;
+        float blurStep = shadow.blur() / layers;
+
+        for (int i = layers; i >= 1; i--) {
+            float expand = shadow.spread() + (blurStep * i);
+            float layerAlpha = baseAlpha * ((float) (layers - i + 1) / (layers + 1));
+
+            float sx = pdfX + shadow.offsetX() - expand;
+            float sy = pdfY - shadow.offsetY() - expand;
+            float sw = width + expand * 2;
+            float sh = height + expand * 2;
+
+            stream.saveGraphicsState();
+            applyAlpha(stream, layerAlpha, false);
+            stream.setNonStrokingColor(shadowColor.getRed() / 255f,
+                    shadowColor.getGreen() / 255f, shadowColor.getBlue() / 255f);
+
+            if (hasRadius) {
+                addRoundedRectPath(stream, sx, sy, sw, sh,
+                        tlr + expand, trr + expand, brr + expand, blr + expand);
+            } else {
+                stream.addRect(sx, sy, sw, sh);
+            }
+            stream.fill();
+            stream.restoreGraphicsState();
+        }
+    }
+
     private void paintBorders(Box box, PDPageContentStream stream,
                                float pdfX, float layoutY, float width, float height) throws IOException {
         ComputedStyle style = box.getStyle();
         if (style == null) return;
 
         float pdfY = toPdfY(layoutY, height);
+        float opacity = style.getOpacity();
+
+        // Check for border-radius — if present, stroke the rounded rect as a whole
+        float fontSize = style.getFontSize(layoutContext.getDefaultFontSizePt());
+        float tlr = style.getBorderTopLeftRadius(width, fontSize);
+        float trr = style.getBorderTopRightRadius(width, fontSize);
+        float brr = style.getBorderBottomRightRadius(width, fontSize);
+        float blr = style.getBorderBottomLeftRadius(width, fontSize);
+        boolean hasRadius = tlr > 0 || trr > 0 || brr > 0 || blr > 0;
+
+        if (hasRadius) {
+            // Use average border width for the stroked rounded rect path
+            float avgBorderWidth = (box.getBorderTopWidth() + box.getBorderRightWidth()
+                    + box.getBorderBottomWidth() + box.getBorderLeftWidth()) / 4f;
+            if (avgBorderWidth <= 0) return;
+
+            // Determine border color (use top border color as primary)
+            boolean hasBorder = !isNoneBorderStyle(style.getBorderTopStyle())
+                    || !isNoneBorderStyle(style.getBorderRightStyle())
+                    || !isNoneBorderStyle(style.getBorderBottomStyle())
+                    || !isNoneBorderStyle(style.getBorderLeftStyle());
+            if (!hasBorder) return;
+
+            Color color = ColorParser.parse(style.getBorderTopColor());
+            if (color == null) color = ColorParser.parse(style.getBorderRightColor());
+            if (color == null) color = ColorParser.parse(style.getBorderBottomColor());
+            if (color == null) color = ColorParser.parse(style.getBorderLeftColor());
+            if (color == null) color = Color.BLACK;
+
+            float alpha = (color.getAlpha() / 255f) * opacity;
+            if (alpha < 1.0f) { stream.saveGraphicsState(); applyAlpha(stream, alpha, true); }
+            stream.setStrokingColor(color.getRed() / 255f, color.getGreen() / 255f, color.getBlue() / 255f);
+            stream.setLineWidth(avgBorderWidth);
+            addRoundedRectPath(stream, pdfX, pdfY, width, height, tlr, trr, brr, blr);
+            stream.stroke();
+            if (alpha < 1.0f) stream.restoreGraphicsState();
+            return;
+        }
+
+        // Standard per-side border drawing (no radius)
 
         // Top border
         if (box.getBorderTopWidth() > 0 && !isNoneBorderStyle(style.getBorderTopStyle())) {
             Color color = ColorParser.parse(style.getBorderTopColor());
             if (color == null) color = Color.BLACK;
+            float alpha = (color.getAlpha() / 255f) * opacity;
+            if (alpha < 1.0f) { stream.saveGraphicsState(); applyAlpha(stream, alpha, true); }
             drawLine(stream, pdfX, pdfY + height, pdfX + width, pdfY + height,
                     box.getBorderTopWidth(), color);
+            if (alpha < 1.0f) stream.restoreGraphicsState();
         }
 
         // Bottom border
         if (box.getBorderBottomWidth() > 0 && !isNoneBorderStyle(style.getBorderBottomStyle())) {
             Color color = ColorParser.parse(style.getBorderBottomColor());
             if (color == null) color = Color.BLACK;
+            float alpha = (color.getAlpha() / 255f) * opacity;
+            if (alpha < 1.0f) { stream.saveGraphicsState(); applyAlpha(stream, alpha, true); }
             drawLine(stream, pdfX, pdfY, pdfX + width, pdfY,
                     box.getBorderBottomWidth(), color);
+            if (alpha < 1.0f) stream.restoreGraphicsState();
         }
 
         // Left border
         if (box.getBorderLeftWidth() > 0 && !isNoneBorderStyle(style.getBorderLeftStyle())) {
             Color color = ColorParser.parse(style.getBorderLeftColor());
             if (color == null) color = Color.BLACK;
+            float alpha = (color.getAlpha() / 255f) * opacity;
+            if (alpha < 1.0f) { stream.saveGraphicsState(); applyAlpha(stream, alpha, true); }
             drawLine(stream, pdfX, pdfY, pdfX, pdfY + height,
                     box.getBorderLeftWidth(), color);
+            if (alpha < 1.0f) stream.restoreGraphicsState();
         }
 
         // Right border
         if (box.getBorderRightWidth() > 0 && !isNoneBorderStyle(style.getBorderRightStyle())) {
             Color color = ColorParser.parse(style.getBorderRightColor());
             if (color == null) color = Color.BLACK;
+            float alpha = (color.getAlpha() / 255f) * opacity;
+            if (alpha < 1.0f) { stream.saveGraphicsState(); applyAlpha(stream, alpha, true); }
             drawLine(stream, pdfX + width, pdfY, pdfX + width, pdfY + height,
                     box.getBorderRightWidth(), color);
+            if (alpha < 1.0f) stream.restoreGraphicsState();
         }
     }
 
@@ -202,12 +332,35 @@ public class PdfPainter {
 
         float pdfY = toPdfYBaseline(baselineY);
 
+        // Resolve letter-spacing and word-spacing
+        float letterSpacing = 0;
+        float wordSpacing = 0;
+        if (style != null) {
+            letterSpacing = style.getLetterSpacing(fontSize);
+            wordSpacing = style.getWordSpacing(fontSize);
+        }
+
+        // Apply opacity
+        float textAlpha = (textColor.getAlpha() / 255f) * (style != null ? style.getOpacity() : 1.0f);
+        if (textAlpha < 1.0f) {
+            stream.saveGraphicsState();
+            applyAlpha(stream, textAlpha, false);
+        }
+
         stream.beginText();
         stream.setFont(font, fontSize);
         stream.setNonStrokingColor(textColor.getRed() / 255f, textColor.getGreen() / 255f, textColor.getBlue() / 255f);
+        if (letterSpacing != 0) stream.setCharacterSpacing(letterSpacing);
+        if (wordSpacing != 0) stream.setWordSpacing(wordSpacing);
         stream.newLineAtOffset(pdfX, pdfY);
         stream.showText(text);
+        if (letterSpacing != 0) stream.setCharacterSpacing(0);
+        if (wordSpacing != 0) stream.setWordSpacing(0);
         stream.endText();
+
+        if (textAlpha < 1.0f) {
+            stream.restoreGraphicsState();
+        }
 
         // Text decoration (underline, line-through)
         if (style != null) {
@@ -270,6 +423,71 @@ public class PdfPainter {
 
     private boolean isNoneBorderStyle(String style) {
         return style == null || "none".equals(style) || "hidden".equals(style);
+    }
+
+    /**
+     * Adds a rounded rectangle path using Bezier curves.
+     * Kappa constant approximates a quarter circle with a cubic Bezier.
+     * PDFBox Y is bottom-up: (x, y) is the bottom-left corner.
+     */
+    private void addRoundedRectPath(PDPageContentStream stream, float x, float y,
+                                     float w, float h, float tlr, float trr,
+                                     float brr, float blr) throws IOException {
+        float k = 0.552284749831f; // kappa for circle approximation
+
+        // Clamp radii to half the box dimension
+        float maxR = Math.min(w, h) / 2f;
+        tlr = Math.min(tlr, maxR);
+        trr = Math.min(trr, maxR);
+        brr = Math.min(brr, maxR);
+        blr = Math.min(blr, maxR);
+
+        // Start at bottom-left, just after the BL radius (moving clockwise in PDF coords)
+        stream.moveTo(x + blr, y);
+
+        // Bottom edge → bottom-right corner
+        stream.lineTo(x + w - brr, y);
+        if (brr > 0) {
+            stream.curveTo(x + w - brr + brr * k, y,
+                           x + w, y + brr - brr * k,
+                           x + w, y + brr);
+        }
+
+        // Right edge → top-right corner
+        stream.lineTo(x + w, y + h - trr);
+        if (trr > 0) {
+            stream.curveTo(x + w, y + h - trr + trr * k,
+                           x + w - trr + trr * k, y + h,
+                           x + w - trr, y + h);
+        }
+
+        // Top edge → top-left corner
+        stream.lineTo(x + tlr, y + h);
+        if (tlr > 0) {
+            stream.curveTo(x + tlr - tlr * k, y + h,
+                           x, y + h - tlr + tlr * k,
+                           x, y + h - tlr);
+        }
+
+        // Left edge → bottom-left corner
+        stream.lineTo(x, y + blr);
+        if (blr > 0) {
+            stream.curveTo(x, y + blr - blr * k,
+                           x + blr - blr * k, y,
+                           x + blr, y);
+        }
+
+        stream.closePath();
+    }
+
+    private void applyAlpha(PDPageContentStream stream, float alpha, boolean stroking) throws IOException {
+        PDExtendedGraphicsState gs = new PDExtendedGraphicsState();
+        if (stroking) {
+            gs.setStrokingAlphaConstant(alpha);
+        } else {
+            gs.setNonStrokingAlphaConstant(alpha);
+        }
+        stream.setGraphicsStateParameters(gs);
     }
 
     /**

@@ -18,6 +18,7 @@ import java.util.regex.Pattern;
 public class CssSelector {
 
     private static final Pattern NTH_PATTERN = Pattern.compile(":nth-(?:of-type|child)\\(([^)]+)\\)");
+    private static final Pattern NOT_PATTERN = Pattern.compile(":not\\(([^)]+)\\)");
     private static final Pattern PSEUDO_SPLIT = Pattern.compile("(:[a-z-]+(?:\\([^)]*\\))?)");
     private static final Pattern ATTR_PATTERN = Pattern.compile("\\[([^\\]]+)\\]");
 
@@ -212,6 +213,16 @@ public class CssSelector {
             if (!matchesAnPlusB(arg, index)) return false;
         }
 
+        String selWithoutNot = NOT_PATTERN.matcher(sel).replaceAll("");
+        if (selWithoutNot.contains(":first-child") && getNthChild(element) != 1) return false;
+        if (selWithoutNot.contains(":last-child") && !isLastChild(element)) return false;
+
+        Matcher notMatcher = NOT_PATTERN.matcher(sel);
+        while (notMatcher.find()) {
+            String inner = notMatcher.group(1).trim();
+            if (new CssSelector(inner).matches(element)) return false;
+        }
+
         // Remove all pseudo-classes
         sel = PSEUDO_SPLIT.matcher(sel).replaceAll("");
 
@@ -350,6 +361,13 @@ public class CssSelector {
         return 1;
     }
 
+    private boolean isLastChild(Element el) {
+        Node parent = el.getParentNode();
+        if (parent == null) return true;
+        List<Element> siblings = DomUtils.childElements(parent);
+        return !siblings.isEmpty() && siblings.get(siblings.size() - 1) == el;
+    }
+
     /**
      * Matches the CSS An+B microsyntax against a 1-based index.
      * Handles: "even", "odd", plain integer, and full An+B expressions
@@ -412,9 +430,24 @@ public class CssSelector {
     }
 
     private static CssSpecificity computeSpecificity(String selector) {
-        // Remove pseudo-class arguments
-        String sel = selector.replaceAll("\\([^)]*\\)", "");
+        // Extract :not() arguments and compute their specificity separately.
+        // :not() itself has zero specificity; only its argument contributes.
         int ids = 0, classes = 0, tags = 0;
+        String sel = selector;
+
+        Matcher notMatcher = NOT_PATTERN.matcher(sel);
+        while (notMatcher.find()) {
+            String inner = notMatcher.group(1).trim();
+            CssSpecificity innerSpec = computeSpecificity(inner);
+            ids += innerSpec.ids();
+            classes += innerSpec.classes();
+            tags += innerSpec.tags();
+        }
+        // Remove :not(...) entirely so its content isn't double-counted
+        sel = NOT_PATTERN.matcher(sel).replaceAll("");
+
+        // Remove pseudo-class arguments (e.g., nth-child(2n+1))
+        sel = sel.replaceAll("\\([^)]*\\)", "");
 
         // Count attribute selectors (each counts as class-level specificity)
         Matcher attrMatcher = ATTR_PATTERN.matcher(sel);

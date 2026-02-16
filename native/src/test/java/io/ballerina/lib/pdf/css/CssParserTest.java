@@ -113,4 +113,136 @@ class CssParserTest {
         CssStylesheet stylesheet = parser.parse(doc);
         assertTrue(stylesheet.getRules().isEmpty());
     }
+
+    // ===== At-rule handling =====
+
+    @Test
+    void stripsMediaScreenBlock() {
+        Document doc = parse("<html><head><style>"
+                + "@media screen { .foo { color: green; } }"
+                + "p { color: red; }"
+                + "</style></head><body></body></html>");
+        CssStylesheet stylesheet = parser.parse(doc);
+
+        List<CssRule> rules = stylesheet.getRules();
+        assertEquals(1, rules.size(), "@media screen rules should not be included");
+        assertEquals("p", rules.get(0).selector().getRaw());
+    }
+
+    @Test
+    void extractsMediaPrintRules() {
+        Document doc = parse("<html><head><style>"
+                + "@media print { .foo { color: black; } }"
+                + "p { color: red; }"
+                + "</style></head><body></body></html>");
+        CssStylesheet stylesheet = parser.parse(doc);
+
+        List<CssRule> rules = stylesheet.getRules();
+        assertEquals(2, rules.size(), "@media print inner rules should be extracted");
+
+        boolean hasFoo = rules.stream().anyMatch(r -> r.selector().getRaw().equals(".foo"));
+        boolean hasP = rules.stream().anyMatch(r -> r.selector().getRaw().equals("p"));
+        assertTrue(hasFoo, "Should extract .foo from @media print");
+        assertTrue(hasP, "Should keep regular p rule");
+    }
+
+    @Test
+    void stripsKeyframesBlock() {
+        Document doc = parse("<html><head><style>"
+                + "@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }"
+                + "p { color: red; }"
+                + "</style></head><body></body></html>");
+        CssStylesheet stylesheet = parser.parse(doc);
+
+        List<CssRule> rules = stylesheet.getRules();
+        assertEquals(1, rules.size(), "@keyframes should not produce style rules");
+        assertEquals("p", rules.get(0).selector().getRaw());
+    }
+
+    @Test
+    void stripsSupportsBlock() {
+        Document doc = parse("<html><head><style>"
+                + "@supports (display: grid) { .container { display: grid; } }"
+                + "p { color: red; }"
+                + "</style></head><body></body></html>");
+        CssStylesheet stylesheet = parser.parse(doc);
+
+        List<CssRule> rules = stylesheet.getRules();
+        assertEquals(1, rules.size(), "@supports should not produce style rules");
+        assertEquals("p", rules.get(0).selector().getRaw());
+    }
+
+    @Test
+    void preservesRegularRulesAroundAtRules() {
+        Document doc = parse("<html><head><style>"
+                + "h1 { font-size: 20px; }"
+                + "@media screen { .nav { display: none; } }"
+                + "p { color: blue; }"
+                + "</style></head><body></body></html>");
+        CssStylesheet stylesheet = parser.parse(doc);
+
+        List<CssRule> rules = stylesheet.getRules();
+        assertEquals(2, rules.size(), "Both regular rules should survive around @media screen");
+        assertEquals("h1", rules.get(0).selector().getRaw());
+        assertEquals("p", rules.get(1).selector().getRaw());
+    }
+
+    @Test
+    void handlesNestedBracesInKeyframes() {
+        Document doc = parse("<html><head><style>"
+                + "@keyframes bounce { 0% { transform: translateY(0); } 50% { transform: translateY(-20px); } 100% { transform: translateY(0); } }"
+                + ".result { font-weight: bold; }"
+                + "</style></head><body></body></html>");
+        CssStylesheet stylesheet = parser.parse(doc);
+
+        List<CssRule> rules = stylesheet.getRules();
+        assertEquals(1, rules.size(), "Rule after @keyframes should be parsed correctly");
+        assertEquals(".result", rules.get(0).selector().getRaw());
+        assertEquals("font-weight", rules.get(0).declarations().get(0).property());
+    }
+
+    @Test
+    void handlesMultipleAtRulesInterspersed() {
+        Document doc = parse("<html><head><style>"
+                + "h1 { color: red; }"
+                + "@media screen { .x { display: none; } }"
+                + "h2 { color: green; }"
+                + "@keyframes fade { 0% { opacity: 0; } 100% { opacity: 1; } }"
+                + "h3 { color: blue; }"
+                + "@media print { .printonly { display: block; } }"
+                + "</style></head><body></body></html>");
+        CssStylesheet stylesheet = parser.parse(doc);
+
+        List<CssRule> rules = stylesheet.getRules();
+        // h1, h2, h3 (regular) + .printonly (from @media print) = 4
+        assertEquals(4, rules.size(),
+                "Should have 3 regular rules + 1 from @media print");
+    }
+
+    @Test
+    void stripsAtFontFace() {
+        Document doc = parse("<html><head><style>"
+                + "@font-face { font-family: 'MyFont'; src: url('font.woff2'); }"
+                + "p { color: red; }"
+                + "</style></head><body></body></html>");
+        CssStylesheet stylesheet = parser.parse(doc);
+
+        List<CssRule> rules = stylesheet.getRules();
+        assertEquals(1, rules.size(), "@font-face should not produce a style rule");
+        assertEquals("p", rules.get(0).selector().getRaw());
+    }
+
+    @Test
+    void handlesMalformedCssGracefully() {
+        Document doc = parse("<html><head><style>"
+                + "p { color: red; }"
+                + "this is not valid css {"
+                + "h1 { font-size: 20px; }"
+                + "</style></head><body></body></html>");
+        CssStylesheet stylesheet = parser.parse(doc);
+
+        // Should not crash; at least some valid rules should be parsed
+        List<CssRule> rules = stylesheet.getRules();
+        assertFalse(rules.isEmpty(), "Should parse at least some valid rules from malformed CSS");
+    }
 }

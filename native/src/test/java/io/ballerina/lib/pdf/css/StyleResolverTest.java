@@ -241,7 +241,7 @@ class StyleResolverTest {
                 + "#target { background: url(data:image/png;base64,abc); }"
                 + "</style></head><body><div id=\"target\">x</div></body></html>";
         ComputedStyle style = resolveStyle(html, "target");
-        assertEquals("url(data:image/png;base64,abc)", style.get("background-image"));
+        assertEquals("url(\"data:image/png;base64,abc\")", style.get("background-image"));
     }
 
     // ===== Shorthand Expansion: font =====
@@ -267,7 +267,7 @@ class StyleResolverTest {
         assertEquals("bold", style.get("font-weight"));
         assertEquals("12px", style.get("font-size"));
         assertEquals("1.5", style.get("line-height"));
-        assertEquals("'Liberation Sans', serif", style.get("font-family"));
+        assertEquals("\"Liberation Sans\", serif", style.get("font-family"));
     }
 
     // ===== Inheritance =====
@@ -373,5 +373,43 @@ class StyleResolverTest {
         String html = "<html><body><div id=\"target\" height=\"100\">x</div></body></html>";
         ComputedStyle style = resolveStyle(html, "target");
         assertEquals("100px", style.get("height"));
+    }
+
+    // ===== Shorthand Expansion: border-radius =====
+
+    @Test
+    void expandsBorderRadiusOneValue() {
+        String html = "<html><head><style>"
+                + "#target { border-radius: 10px; }"
+                + "</style></head><body><div id=\"target\">x</div></body></html>";
+        ComputedStyle style = resolveStyle(html, "target");
+        assertEquals("10px", style.get("border-top-left-radius"));
+        assertEquals("10px", style.get("border-top-right-radius"));
+        assertEquals("10px", style.get("border-bottom-right-radius"));
+        assertEquals("10px", style.get("border-bottom-left-radius"));
+    }
+
+    @Test
+    void expandsBorderRadiusTwoValues() {
+        String html = "<html><head><style>"
+                + "#target { border-radius: 10px 20px; }"
+                + "</style></head><body><div id=\"target\">x</div></body></html>";
+        ComputedStyle style = resolveStyle(html, "target");
+        assertEquals("10px", style.get("border-top-left-radius"));
+        assertEquals("20px", style.get("border-top-right-radius"));
+        assertEquals("10px", style.get("border-bottom-right-radius"));
+        assertEquals("20px", style.get("border-bottom-left-radius"));
+    }
+
+    @Test
+    void expandsBorderRadiusFourValues() {
+        String html = "<html><head><style>"
+                + "#target { border-radius: 1px 2px 3px 4px; }"
+                + "</style></head><body><div id=\"target\">x</div></body></html>";
+        ComputedStyle style = resolveStyle(html, "target");
+        assertEquals("1px", style.get("border-top-left-radius"));
+        assertEquals("2px", style.get("border-top-right-radius"));
+        assertEquals("3px", style.get("border-bottom-right-radius"));
+        assertEquals("4px", style.get("border-bottom-left-radius"));
     }
 }

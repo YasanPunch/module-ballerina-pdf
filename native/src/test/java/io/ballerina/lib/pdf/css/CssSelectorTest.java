@@ -404,4 +404,89 @@ class CssSelectorTest {
         assertEquals(1, tokens.size());
         assertEquals("a[href^=\"http\"]", tokens.get(0));
     }
+
+    // --- :first-child ---
+
+    @Test
+    void matchesFirstChild() {
+        Document doc = parse("<div><p>first</p><p>second</p><p>third</p></div>");
+        Element div = findFirst(doc, "div");
+        List<Element> children = DomUtils.childElements(div);
+
+        CssSelector selector = new CssSelector("p:first-child");
+        assertTrue(selector.matches(children.get(0)));
+        assertFalse(selector.matches(children.get(1)));
+        assertFalse(selector.matches(children.get(2)));
+    }
+
+    // --- :last-child ---
+
+    @Test
+    void matchesLastChild() {
+        Document doc = parse("<div><p>first</p><p>second</p><p>third</p></div>");
+        Element div = findFirst(doc, "div");
+        List<Element> children = DomUtils.childElements(div);
+
+        CssSelector selector = new CssSelector("p:last-child");
+        assertFalse(selector.matches(children.get(0)));
+        assertFalse(selector.matches(children.get(1)));
+        assertTrue(selector.matches(children.get(2)));
+    }
+
+    @Test
+    void lastChildWithMixedTags() {
+        Document doc = parse("<div><p>first</p><span>last</span></div>");
+        Element div = findFirst(doc, "div");
+        List<Element> children = DomUtils.childElements(div);
+
+        // :last-child matches span (the last child element regardless of tag)
+        assertFalse(new CssSelector(":last-child").matches(children.get(0)));
+        assertTrue(new CssSelector(":last-child").matches(children.get(1)));
+    }
+
+    // --- :not() ---
+
+    @Test
+    void matchesNotWithClass() {
+        Document doc = parse("<div class=\"exclude\">a</div><div class=\"include\">b</div>");
+        List<Element> divs = DomUtils.findAll(doc, "div");
+
+        CssSelector selector = new CssSelector("div:not(.exclude)");
+        assertFalse(selector.matches(divs.get(0)));
+        assertTrue(selector.matches(divs.get(1)));
+    }
+
+    @Test
+    void matchesNotWithPseudoClass() {
+        Document doc = parse("<table><tr><td>1</td></tr><tr><td>2</td></tr><tr><td>3</td></tr></table>");
+        List<Element> trs = DomUtils.findAll(doc, "tr");
+
+        CssSelector selector = new CssSelector("tr:not(:first-child)");
+        assertFalse(selector.matches(trs.get(0)));
+        assertTrue(selector.matches(trs.get(1)));
+        assertTrue(selector.matches(trs.get(2)));
+    }
+
+    // --- Specificity for :not() ---
+
+    @Test
+    void specificityOfNotUsesArgument() {
+        // :not(.cls) → specificity of .cls = (0,1,0), :not itself contributes nothing
+        CssSpecificity notClass = new CssSelector(":not(.cls)").getSpecificity();
+        assertEquals(0, notClass.ids());
+        assertEquals(1, notClass.classes());
+        assertEquals(0, notClass.tags());
+
+        // :not(#id) → specificity of #id = (1,0,0)
+        CssSpecificity notId = new CssSelector(":not(#id)").getSpecificity();
+        assertEquals(1, notId.ids());
+        assertEquals(0, notId.classes());
+        assertEquals(0, notId.tags());
+
+        // div:not(.cls) → tag(1) + class(1) from :not arg
+        CssSpecificity combined = new CssSelector("div:not(.cls)").getSpecificity();
+        assertEquals(0, combined.ids());
+        assertEquals(1, combined.classes());
+        assertEquals(1, combined.tags());
+    }
 }

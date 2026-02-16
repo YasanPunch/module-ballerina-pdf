@@ -42,6 +42,142 @@ public class BlockFormattingContext {
         root.setHeight(contentHeight);
     }
 
+    // --- Float tracking ---
+
+    /** Tracks the position and extent of a floated box during layout. */
+    private record FloatBox(Box box, float x, float y, float width, float height, String side) {}
+
+    /** Returns the available content width at a given y, accounting for active floats. */
+    private float getAvailableWidthAtY(float y, float containerWidth, List<FloatBox> floats) {
+        float leftIntrusion = 0, rightIntrusion = 0;
+        for (FloatBox f : floats) {
+            if (y >= f.y && y < f.y + f.height) {
+                if ("left".equals(f.side)) {
+                    leftIntrusion = Math.max(leftIntrusion, f.x + f.width);
+                } else {
+                    rightIntrusion = Math.max(rightIntrusion, containerWidth - f.x);
+                }
+            }
+        }
+        return Math.max(0, containerWidth - leftIntrusion - rightIntrusion);
+    }
+
+    /** Returns the left offset at a given y caused by left floats. */
+    private float getLeftOffsetAtY(float y, List<FloatBox> floats) {
+        float offset = 0;
+        for (FloatBox f : floats) {
+            if ("left".equals(f.side) && y >= f.y && y < f.y + f.height) {
+                offset = Math.max(offset, f.x + f.width);
+            }
+        }
+        return offset;
+    }
+
+    /** Returns true if the child has a float style of left or right. */
+    private boolean isFloated(Box child) {
+        if (child instanceof BlockBox bb && bb.getStyle() != null) {
+            String fl = bb.getStyle().getFloat();
+            return "left".equals(fl) || "right".equals(fl);
+        }
+        return false;
+    }
+
+    /**
+     * Applies clear by advancing cursorY past the bottom of relevant active floats.
+     */
+    private float applyClear(String clear, float cursorY, List<FloatBox> activeFloats) {
+        if ("none".equals(clear)) return cursorY;
+        float clearBelow = cursorY;
+        for (FloatBox f : activeFloats) {
+            boolean matches = "both".equals(clear)
+                    || f.side.equals(clear);
+            if (matches) {
+                clearBelow = Math.max(clearBelow, f.y + f.height);
+            }
+        }
+        return clearBelow;
+    }
+
+    /**
+     * Lays out a floated child: resolves its box model and content, then positions it
+     * in the float band at cursorY, pushing it down if it doesn't fit horizontally.
+     */
+    private FloatBox layoutFloatedChild(BlockBox block, float containerWidth, float cursorY,
+                                         List<FloatBox> activeFloats) {
+        resolveBoxModelWithWidth(block, containerWidth);
+        ComputedStyle style = block.getStyle();
+        float fontSize = style.getFontSize(ctx.getDefaultFontSizePt());
+        String side = style.getFloat();
+
+        // Resolve width (shrink-to-fit for floats without explicit width)
+        float explicitWidth = style.getWidth(containerWidth, fontSize);
+        float contentWidth;
+        if (explicitWidth > 0) {
+            contentWidth = explicitWidth;
+        } else {
+            contentWidth = containerWidth
+                    - block.getMarginLeft() - block.getMarginRight()
+                    - block.getBorderLeftWidth() - block.getBorderRightWidth()
+                    - block.getPaddingLeft() - block.getPaddingRight();
+            contentWidth = Math.max(0, contentWidth);
+        }
+
+        // Clamp to min-width / max-width
+        float maxW = style.getMaxWidth(containerWidth, fontSize);
+        float minW = style.getMinWidth(containerWidth, fontSize);
+        contentWidth = Math.max(minW, Math.min(contentWidth, maxW));
+        block.setWidth(contentWidth);
+
+        // Layout float contents
+        float contentHeight = layoutChildren(block, contentWidth);
+        float explicitHeight = style.getHeight(contentHeight, fontSize);
+        if (explicitHeight > 0) {
+            contentHeight = Math.max(contentHeight, explicitHeight);
+        }
+        float maxH = style.getMaxHeight(contentHeight, fontSize);
+        float minH = style.getMinHeight(contentHeight, fontSize);
+        contentHeight = Math.max(minH, Math.min(contentHeight, maxH));
+        block.setHeight(contentHeight);
+
+        float outerWidth = block.getOuterWidth();
+        float outerHeight = block.getOuterHeight();
+
+        // Find placement Y — drop below conflicting floats if no room
+        float placeY = cursorY;
+        while (true) {
+            float avail = getAvailableWidthAtY(placeY, containerWidth, activeFloats);
+            if (outerWidth <= avail + 0.01f) break;
+            // Drop below the lowest float that overlaps placeY
+            float nextY = Float.MAX_VALUE;
+            for (FloatBox f : activeFloats) {
+                if (placeY >= f.y && placeY < f.y + f.height) {
+                    nextY = Math.min(nextY, f.y + f.height);
+                }
+            }
+            if (nextY == Float.MAX_VALUE) break;
+            placeY = nextY;
+        }
+
+        // Position horizontally
+        float placeX;
+        if ("left".equals(side)) {
+            placeX = getLeftOffsetAtY(placeY, activeFloats);
+        } else {
+            float rightIntrusion = 0;
+            for (FloatBox f : activeFloats) {
+                if ("right".equals(f.side) && placeY >= f.y && placeY < f.y + f.height) {
+                    rightIntrusion = Math.max(rightIntrusion, containerWidth - f.x);
+                }
+            }
+            placeX = containerWidth - rightIntrusion - outerWidth;
+        }
+
+        block.setX(placeX + block.getMarginLeft());
+        block.setY(placeY + block.getMarginTop());
+
+        return new FloatBox(block, placeX, placeY, outerWidth, outerHeight, side);
+    }
+
     /**
      * Lays out children of a block container. Returns total height consumed.
      */
@@ -50,23 +186,29 @@ public class BlockFormattingContext {
         container.clearLayoutChildren();
         if (container.getChildren().isEmpty()) return 0;
 
-        // Partition absolute-positioned children from normal flow
-        List<Box> flowChildren = new ArrayList<>();
+        // Partition children: absolute, floated, and flow — preserving document order
+        // for flow+float (floats must be processed at their source position).
         List<Box> absoluteChildren = new ArrayList<>();
+        List<Box> orderedChildren = new ArrayList<>(); // flow + float in document order
+        boolean hasFloats = false;
+
         for (Box child : container.getChildren()) {
             if (child instanceof BlockBox bb && bb.getStyle() != null
                     && "absolute".equals(bb.getStyle().getPosition())) {
                 absoluteChildren.add(bb);
             } else {
-                flowChildren.add(child);
+                orderedChildren.add(child);
+                if (isFloated(child)) hasFloats = true;
             }
         }
 
-        // Determine if flow children are all inline or contain blocks
+        // Determine if children contain block-level elements (excluding floats,
+        // which are removed from normal flow)
         boolean hasBlockChildren = false;
         boolean hasInlineChildren = false;
 
-        for (Box child : flowChildren) {
+        for (Box child : orderedChildren) {
+            if (isFloated(child)) continue; // floats don't determine block/inline context
             if (child instanceof BlockBox bb
                     && bb.getStyle() != null
                     && "inline-block".equals(bb.getStyle().getDisplay())) {
@@ -79,8 +221,8 @@ public class BlockFormattingContext {
             }
         }
 
-        if (!hasBlockChildren) {
-            // All inline: use inline layout engine
+        // Pure inline context (no block children) — delegate to inline engine
+        if (!hasBlockChildren && !hasFloats) {
             float height = inlineEngine.layout(container, availableWidth);
             if (!absoluteChildren.isEmpty()) {
                 layoutAbsoluteChildren(container, absoluteChildren, availableWidth, height);
@@ -88,12 +230,75 @@ public class BlockFormattingContext {
             return height;
         }
 
-        // Block layout: stack children vertically
+        // Block layout (may include floats): process children in document order
+        List<FloatBox> activeFloats = hasFloats ? new ArrayList<>() : null;
         float cursorY = 0;
 
-        for (Box child : flowChildren) {
+        // If all non-float children are inline, we still need block-level processing
+        // to handle the floats, but delegate the inline content to the inline engine
+        // with float-aware widths.
+        if (!hasBlockChildren && hasFloats) {
+            // Process children in order: floats get positioned, inline content
+            // gets laid out with float-aware widths
+            List<Box> inlineChildren = new ArrayList<>();
+            for (Box child : orderedChildren) {
+                if (isFloated(child)) {
+                    // Lay out any accumulated inline content before this float
+                    if (!inlineChildren.isEmpty()) {
+                        cursorY = layoutInlineRunWithFloats(container, inlineChildren,
+                                availableWidth, cursorY, activeFloats);
+                        inlineChildren.clear();
+                    }
+                    FloatBox fb = layoutFloatedChild((BlockBox) child, availableWidth,
+                            cursorY, activeFloats);
+                    activeFloats.add(fb);
+                } else {
+                    inlineChildren.add(child);
+                }
+            }
+            // Lay out remaining inline content
+            if (!inlineChildren.isEmpty()) {
+                cursorY = layoutInlineRunWithFloats(container, inlineChildren,
+                        availableWidth, cursorY, activeFloats);
+            }
+
+            // Container height must encompass floats
+            for (FloatBox f : activeFloats) {
+                cursorY = Math.max(cursorY, f.y + f.height);
+            }
+
+            if (!absoluteChildren.isEmpty()) {
+                layoutAbsoluteChildren(container, absoluteChildren, availableWidth, cursorY);
+            }
+            return cursorY;
+        }
+
+        // Mixed block context (blocks, tables, possibly floats).
+        // Track pending bottom margin for CSS 2.1 §8.3.1 adjacent sibling margin collapsing.
+        float pendingMarginBottom = 0;
+        boolean isFirstChild = true;
+
+        for (Box child : orderedChildren) {
+            // Handle floated children — floats don't participate in margin collapsing
+            if (hasFloats && isFloated(child)) {
+                FloatBox fb = layoutFloatedChild((BlockBox) child, availableWidth,
+                        cursorY, activeFloats);
+                activeFloats.add(fb);
+                continue;
+            }
+
+            // Apply clear if specified
+            if (hasFloats && child instanceof BlockBox bb && bb.getStyle() != null) {
+                cursorY = applyClear(bb.getStyle().getClear(), cursorY, activeFloats);
+            }
+
+            // Determine if this child participates in margin collapsing.
+            // Floats and inline-blocks do not collapse margins.
+            boolean collapseMargins = !isFloated(child)
+                    && !(child instanceof BlockBox bb2 && bb2.getStyle() != null
+                         && "inline-block".equals(bb2.getStyle().getDisplay()));
+
             if (child instanceof TableBox table) {
-                // Re-resolve box model with actual width
                 resolveBoxModelWithWidth(table, availableWidth);
 
                 ComputedStyle tableStyle = table.getStyle();
@@ -103,12 +308,20 @@ public class BlockFormattingContext {
                         - table.getBorderLeftWidth() - table.getBorderRightWidth()
                         - table.getPaddingLeft() - table.getPaddingRight();
 
-                // Clamp to min-width / max-width
                 if (tableStyle != null) {
                     float tMaxW = tableStyle.getMaxWidth(availableWidth, tableFontSize);
                     float tMinW = tableStyle.getMinWidth(availableWidth, tableFontSize);
                     tableContentWidth = Math.max(tMinW, Math.min(tableContentWidth, tMaxW));
                 }
+
+                // Collapse top margin with previous sibling's bottom margin
+                float effectiveMarginTop;
+                if (!isFirstChild && collapseMargins) {
+                    effectiveMarginTop = Math.max(pendingMarginBottom, table.getMarginTop());
+                } else {
+                    effectiveMarginTop = (isFirstChild ? 0 : pendingMarginBottom) + table.getMarginTop();
+                }
+                cursorY += effectiveMarginTop;
 
                 table.setX(0);
                 table.setY(cursorY);
@@ -116,22 +329,20 @@ public class BlockFormattingContext {
                 float tableHeight = tableEngine.layout(table, tableContentWidth);
                 table.setHeight(tableHeight);
 
-                cursorY += table.getMarginTop()
-                        + table.getBorderTopWidth() + table.getPaddingTop()
+                cursorY += table.getBorderTopWidth() + table.getPaddingTop()
                         + tableHeight
-                        + table.getPaddingBottom() + table.getBorderBottomWidth()
-                        + table.getMarginBottom();
+                        + table.getPaddingBottom() + table.getBorderBottomWidth();
 
-                // Apply relative offset (visual only, does not affect cursorY)
+                pendingMarginBottom = table.getMarginBottom();
+                isFirstChild = false;
+
                 if (tableStyle != null && "relative".equals(tableStyle.getPosition())) {
                     applyRelativeOffset(table, availableWidth, tableHeight);
                 }
 
             } else if (child instanceof BlockBox block) {
-                // Re-resolve box model with actual width
                 resolveBoxModelWithWidth(block, availableWidth);
 
-                // Resolve explicit width
                 ComputedStyle style = block.getStyle();
                 float explicitWidth = style.getWidth(availableWidth, ctx.getDefaultFontSizePt());
                 float blockWidth;
@@ -148,11 +359,19 @@ public class BlockFormattingContext {
                 }
                 blockWidth = Math.max(0, blockWidth);
 
-                // Clamp to min-width / max-width
                 float fontSize = style.getFontSize(ctx.getDefaultFontSizePt());
                 float maxW = style.getMaxWidth(availableWidth, fontSize);
                 float minW = style.getMinWidth(availableWidth, fontSize);
                 blockWidth = Math.max(minW, Math.min(blockWidth, maxW));
+
+                // Collapse top margin with previous sibling's bottom margin
+                float effectiveMarginTop;
+                if (!isFirstChild && collapseMargins) {
+                    effectiveMarginTop = Math.max(pendingMarginBottom, block.getMarginTop());
+                } else {
+                    effectiveMarginTop = (isFirstChild ? 0 : pendingMarginBottom) + block.getMarginTop();
+                }
+                cursorY += effectiveMarginTop;
 
                 block.setX(0);
                 block.setY(cursorY);
@@ -163,30 +382,46 @@ public class BlockFormattingContext {
                 if (explicitHeight > 0) {
                     contentHeight = Math.max(contentHeight, explicitHeight);
                 }
-                // Clamp to min-height / max-height
                 float maxH = style.getMaxHeight(contentHeight, fontSize);
                 float minH = style.getMinHeight(contentHeight, fontSize);
                 contentHeight = Math.max(minH, Math.min(contentHeight, maxH));
 
                 block.setHeight(contentHeight);
 
-                cursorY += block.getMarginTop()
-                        + block.getBorderTopWidth() + block.getPaddingTop()
+                cursorY += block.getBorderTopWidth() + block.getPaddingTop()
                         + contentHeight
-                        + block.getPaddingBottom() + block.getBorderBottomWidth()
-                        + block.getMarginBottom();
+                        + block.getPaddingBottom() + block.getBorderBottomWidth();
 
-                // Apply relative offset (visual only, does not affect cursorY)
+                pendingMarginBottom = block.getMarginBottom();
+                isFirstChild = false;
+
                 if ("relative".equals(style.getPosition())) {
                     applyRelativeOffset(block, availableWidth, contentHeight);
                 }
 
             } else {
                 // Inline content mixed with blocks — position at cursor
+                // Inline content resets margin collapsing
+                if (!isFirstChild) {
+                    cursorY += pendingMarginBottom;
+                }
+                pendingMarginBottom = 0;
+                isFirstChild = false;
+
                 resolveBoxModelWithWidth(child, availableWidth);
                 child.setX(0);
                 child.setY(cursorY);
                 cursorY += child.getHeight() > 0 ? child.getHeight() : ctx.getDefaultFontSizePt() * 1.333f;
+            }
+        }
+
+        // Flush any remaining pending bottom margin
+        cursorY += pendingMarginBottom;
+
+        // Container height must encompass floats
+        if (hasFloats) {
+            for (FloatBox f : activeFloats) {
+                cursorY = Math.max(cursorY, f.y + f.height);
             }
         }
 
@@ -196,6 +431,45 @@ public class BlockFormattingContext {
         }
 
         return cursorY;
+    }
+
+    /**
+     * Lays out a run of inline children with float-aware line widths.
+     * Creates a temporary wrapper, delegates to the inline engine, then merges
+     * the positioned children back into the container.
+     */
+    private float layoutInlineRunWithFloats(Box container, List<Box> inlineChildren,
+                                             float availableWidth, float startY,
+                                             List<FloatBox> activeFloats) {
+        // Create a temporary container for the inline run
+        BlockBox wrapper = new BlockBox(container.getStyle());
+        for (Box child : inlineChildren) {
+            wrapper.addChild(child);
+        }
+
+        InlineLayoutEngine.LineWidthProvider provider = (float y) -> {
+            float w = getAvailableWidthAtY(y, availableWidth, activeFloats);
+            float xOff = getLeftOffsetAtY(y, activeFloats);
+            return new float[]{w, xOff};
+        };
+
+        float height = inlineEngine.layout(wrapper, availableWidth, provider, startY);
+
+        // Transfer positioned children to the real container
+        List<Box> positioned = wrapper.getEffectiveChildren();
+        if (positioned != null) {
+            List<Box> existing = container.getLayoutChildren();
+            if (existing == null) {
+                existing = new ArrayList<>();
+            }
+            for (Box child : positioned) {
+                child.setY(child.getY() + startY);
+                existing.add(child);
+            }
+            container.setLayoutChildren(existing);
+        }
+
+        return startY + height;
     }
 
     /**

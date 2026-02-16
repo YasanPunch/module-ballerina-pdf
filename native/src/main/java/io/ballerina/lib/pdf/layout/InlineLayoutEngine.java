@@ -27,10 +27,29 @@ public class InlineLayoutEngine {
     }
 
     /**
+     * Provides line-specific width and x-offset based on vertical position.
+     * Used by the BFC to narrow lines next to floated elements.
+     */
+    @FunctionalInterface
+    interface LineWidthProvider {
+        /** Returns {availableWidth, xOffset} for a line starting at the given y position. */
+        float[] getWidthAndOffsetAtY(float y);
+    }
+
+    /**
      * Lays out inline children of a block box within the given available width.
      * Returns the total height consumed by the inline content.
      */
     public float layout(Box container, float availableWidth) {
+        return layout(container, availableWidth, null, 0f);
+    }
+
+    /**
+     * Lays out inline children with float-aware line widths.
+     * @param provider supplies per-line width and x-offset (null = constant availableWidth)
+     * @param startY the container's y position within the BFC (for provider lookups)
+     */
+    public float layout(Box container, float availableWidth, LineWidthProvider provider, float startY) {
         List<Box> inlineChildren = container.getChildren();
         if (inlineChildren.isEmpty()) return 0;
 
@@ -39,8 +58,10 @@ public class InlineLayoutEngine {
         collectInlineItems(inlineChildren, items, availableWidth);
         if (items.isEmpty()) return 0;
 
-        // Break into lines
-        List<Line> lines = breakIntoLines(items, availableWidth);
+        // Break into lines (float-aware if provider is given)
+        List<Line> lines = (provider != null)
+                ? breakIntoLinesWithProvider(items, availableWidth, provider, startY)
+                : breakIntoLines(items, availableWidth);
 
         // Position each line
         float cursorY = 0;
@@ -48,13 +69,22 @@ public class InlineLayoutEngine {
 
         for (Line line : lines) {
             float lineHeight = line.height;
-            float xOffset = 0;
 
-            // Text alignment
+            // Get line-specific x offset from float context or alignment
+            float lineAvailWidth = availableWidth;
+            float floatXOffset = 0;
+            if (provider != null) {
+                float[] wa = provider.getWidthAndOffsetAtY(startY + cursorY);
+                lineAvailWidth = wa[0];
+                floatXOffset = wa[1];
+            }
+
+            float xOffset = floatXOffset;
+            // Text alignment within the available (possibly narrowed) width
             float lineWidth = line.width;
             switch (textAlign) {
-                case "center" -> xOffset = (availableWidth - lineWidth) / 2f;
-                case "right" -> xOffset = availableWidth - lineWidth;
+                case "center" -> xOffset += (lineAvailWidth - lineWidth) / 2f;
+                case "right" -> xOffset += lineAvailWidth - lineWidth;
             }
 
             // Position each item on this line
@@ -103,6 +133,16 @@ public class InlineLayoutEngine {
                 String text = textRun.getText();
                 if (text == null || text.isEmpty()) continue;
 
+                // Resolve letter-spacing and word-spacing for width calculations
+                float letterSpacing = 0;
+                float wordSpacing = 0;
+                ComputedStyle textStyle = textRun.getStyle();
+                if (textStyle != null) {
+                    float fs = textRun.getFontSize();
+                    letterSpacing = textStyle.getLetterSpacing(fs);
+                    wordSpacing = textStyle.getWordSpacing(fs);
+                }
+
                 String[] words = text.split("(?<= )"); // split keeping trailing spaces
                 for (String word : words) {
                     if (word.isEmpty()) continue;
@@ -112,6 +152,16 @@ public class InlineLayoutEngine {
                     wordRun.setSuperscript(textRun.isSuperscript());
                     wordRun.setSubscript(textRun.isSubscript());
                     float wordWidth = fontManager.measureText(word, textRun.getFont(), textRun.getFontSize());
+                    // Add letter-spacing between characters
+                    if (letterSpacing != 0 && word.length() > 1) {
+                        wordWidth += letterSpacing * (word.length() - 1);
+                    }
+                    // Add word-spacing for each space character in this word chunk
+                    if (wordSpacing != 0) {
+                        for (int ci = 0; ci < word.length(); ci++) {
+                            if (word.charAt(ci) == ' ') wordWidth += wordSpacing;
+                        }
+                    }
                     wordRun.setTextWidth(wordWidth);
                     items.add(new InlineItem(wordRun, wordWidth,
                             fontManager.getLineHeight(textRun.getFont(), textRun.getFontSize())));
@@ -195,6 +245,57 @@ public class InlineLayoutEngine {
                 currentLine = new ArrayList<>();
                 currentWidth = 0;
                 maxLineHeight = 0;
+
+                // Strip leading whitespace from the first word on the new line
+                if (item.box instanceof TextRun tr && tr.getText().startsWith(" ")) {
+                    String trimmed = tr.getText().stripLeading();
+                    if (trimmed.isEmpty()) continue;
+                    tr.setText(trimmed);
+                    float newWidth = fontManager.measureText(trimmed, tr.getFont(), tr.getFontSize());
+                    tr.setTextWidth(newWidth);
+                    item = new InlineItem(tr, newWidth, item.height);
+                }
+            }
+
+            currentLine.add(item);
+            currentWidth += item.width;
+            maxLineHeight = Math.max(maxLineHeight, item.height);
+        }
+
+        if (!currentLine.isEmpty()) {
+            lines.add(new Line(currentLine, currentWidth, maxLineHeight));
+        }
+
+        return lines;
+    }
+
+    /**
+     * Float-aware line breaking: queries the provider for available width at each line's
+     * y position, so lines next to floats are narrower.
+     */
+    private List<Line> breakIntoLinesWithProvider(List<InlineItem> items, float fallbackWidth,
+                                                   LineWidthProvider provider, float startY) {
+        List<Line> lines = new ArrayList<>();
+        List<InlineItem> currentLine = new ArrayList<>();
+        float currentWidth = 0;
+        float maxLineHeight = 0;
+        float cursorY = 0;
+
+        float[] wa = provider.getWidthAndOffsetAtY(startY + cursorY);
+        float lineMaxWidth = wa[0];
+
+        for (InlineItem item : items) {
+            if (currentWidth + item.width > lineMaxWidth && !currentLine.isEmpty()) {
+                float lineH = maxLineHeight;
+                lines.add(new Line(currentLine, currentWidth, lineH));
+                cursorY += lineH;
+                currentLine = new ArrayList<>();
+                currentWidth = 0;
+                maxLineHeight = 0;
+
+                // Re-query available width for the new line's y position
+                wa = provider.getWidthAndOffsetAtY(startY + cursorY);
+                lineMaxWidth = wa[0];
 
                 // Strip leading whitespace from the first word on the new line
                 if (item.box instanceof TextRun tr && tr.getText().startsWith(" ")) {

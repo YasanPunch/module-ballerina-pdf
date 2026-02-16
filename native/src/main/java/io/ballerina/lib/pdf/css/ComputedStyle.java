@@ -5,6 +5,8 @@ import io.ballerina.lib.pdf.util.CssValueParser;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Resolved CSS styles for a single element after cascade, specificity, and inheritance.
@@ -88,6 +90,72 @@ public class ComputedStyle {
 
     public String getColor() {
         return get("color");
+    }
+
+    public float getOpacity() {
+        String val = get("opacity");
+        if (val == null) return 1.0f;
+        try { return Math.max(0, Math.min(1, Float.parseFloat(val.trim()))); }
+        catch (NumberFormatException e) { return 1.0f; }
+    }
+
+    /** Parsed box-shadow values. */
+    public record BoxShadow(float offsetX, float offsetY, float blur, float spread, String color) {}
+
+    // Pattern to extract length values from box-shadow, stopping before a color keyword or function
+    private static final Pattern SHADOW_LENGTH = Pattern.compile("-?[\\d.]+(?:px|pt|em|rem|%|mm|cm|in)?");
+
+    /**
+     * Parses the box-shadow property. Returns null if none/unset.
+     * Supports a single shadow: offsetX offsetY [blur [spread]] [color]
+     */
+    public BoxShadow getBoxShadow(float containerWidth, float fontSize) {
+        String val = get("box-shadow");
+        if (val == null || val.equals("none")) return null;
+        val = val.trim();
+
+        // Extract all length tokens and the remaining color
+        Matcher m = SHADOW_LENGTH.matcher(val);
+        java.util.List<String> lengths = new java.util.ArrayList<>();
+        int lastEnd = 0;
+        StringBuilder colorParts = new StringBuilder();
+        while (m.find()) {
+            // Collect text before this match as potential color
+            String before = val.substring(lastEnd, m.start()).trim();
+            if (!before.isEmpty() && !before.equals(",")) {
+                colorParts.append(before).append(' ');
+            }
+            lengths.add(m.group());
+            lastEnd = m.end();
+        }
+        // Remaining text after last length is color
+        String trailing = val.substring(lastEnd).trim();
+        if (!trailing.isEmpty()) {
+            colorParts.append(trailing);
+        }
+
+        if (lengths.size() < 2) return null;
+
+        float ox = CssValueParser.toPoints(lengths.get(0), containerWidth, fontSize);
+        float oy = CssValueParser.toPoints(lengths.get(1), containerWidth, fontSize);
+        float blur = lengths.size() > 2 ? CssValueParser.toPoints(lengths.get(2), containerWidth, fontSize) : 0;
+        float spread = lengths.size() > 3 ? CssValueParser.toPoints(lengths.get(3), containerWidth, fontSize) : 0;
+        String shadowColor = colorParts.toString().trim();
+        if (shadowColor.isEmpty()) shadowColor = "rgba(0,0,0,1)";
+
+        return new BoxShadow(ox, oy, blur, spread, shadowColor);
+    }
+
+    public float getLetterSpacing(float fontSize) {
+        String val = get("letter-spacing");
+        if (val == null || val.equals("normal")) return 0;
+        return CssValueParser.toPoints(val, 0, fontSize);
+    }
+
+    public float getWordSpacing(float fontSize) {
+        String val = get("word-spacing");
+        if (val == null || val.equals("normal")) return 0;
+        return CssValueParser.toPoints(val, 0, fontSize);
     }
 
     public String getBackgroundColor() {
@@ -224,8 +292,40 @@ public class ComputedStyle {
         return CssValueParser.toPoints(val, containerWidth, fontSize);
     }
 
+    public float getBorderTopLeftRadius(float containerWidth, float fontSize) {
+        String val = get("border-top-left-radius");
+        if (val == null || val.equals("0")) return 0;
+        return CssValueParser.toPoints(val, containerWidth, fontSize);
+    }
+
+    public float getBorderTopRightRadius(float containerWidth, float fontSize) {
+        String val = get("border-top-right-radius");
+        if (val == null || val.equals("0")) return 0;
+        return CssValueParser.toPoints(val, containerWidth, fontSize);
+    }
+
+    public float getBorderBottomRightRadius(float containerWidth, float fontSize) {
+        String val = get("border-bottom-right-radius");
+        if (val == null || val.equals("0")) return 0;
+        return CssValueParser.toPoints(val, containerWidth, fontSize);
+    }
+
+    public float getBorderBottomLeftRadius(float containerWidth, float fontSize) {
+        String val = get("border-bottom-left-radius");
+        if (val == null || val.equals("0")) return 0;
+        return CssValueParser.toPoints(val, containerWidth, fontSize);
+    }
+
     public String getPosition() {
         return get("position", "static");
+    }
+
+    public String getFloat() {
+        return get("float", "none");
+    }
+
+    public String getClear() {
+        return get("clear", "none");
     }
 
     public float getTop(float containerSize, float fontSize) {

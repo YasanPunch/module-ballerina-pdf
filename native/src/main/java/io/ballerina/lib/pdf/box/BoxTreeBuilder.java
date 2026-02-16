@@ -121,7 +121,7 @@ public class BoxTreeBuilder {
 
     private Box createBox(Element element, ComputedStyle style, String display, String tagName) {
         return switch (display) {
-            case "block", "list-item", "inline-block" -> {
+            case "block", "list-item", "inline-block", "flex", "inline-flex", "grid", "inline-grid" -> {
                 BlockBox box = new BlockBox(style);
                 if ("list-item".equals(display)) {
                     handleListItem(element, box);
@@ -251,6 +251,7 @@ public class BoxTreeBuilder {
 
     private boolean isBlockLevel(String display) {
         return display.equals("block") || display.equals("table") || display.equals("list-item")
+                || display.equals("flex") || display.equals("grid")
                 || display.startsWith("table-");
     }
 

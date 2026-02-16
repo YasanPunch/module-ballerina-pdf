@@ -23,3 +23,7 @@ public type HtmlParseError distinct Error;
 
 # Error during the PDF rendering pipeline (layout, painting, or PDF generation).
 public type RenderError distinct Error;
+
+# Error during PDF reading operations (text extraction, image conversion).
+# Returned when the input PDF is corrupted, inaccessible, or invalid.
+public type ReadError distinct Error;

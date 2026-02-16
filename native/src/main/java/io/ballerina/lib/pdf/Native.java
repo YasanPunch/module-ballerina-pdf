@@ -5,6 +5,7 @@ import io.ballerina.runtime.api.utils.StringUtils;
 import io.ballerina.runtime.api.values.BArray;
 import io.ballerina.runtime.api.values.BMap;
 import io.ballerina.runtime.api.values.BString;
+import org.apache.pdfbox.pdmodel.PDDocument;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -98,6 +99,74 @@ public final class Native {
         } catch (Exception e) {
             return DiagnosticLog.renderError(
                     "PDF rendering failed: " + e.getMessage(), e);
+        }
+    }
+
+    // --- PDF reading methods ---
+
+    /**
+     * Converts each page of a PDF (as byte[]) to Base64-encoded PNG images.
+     */
+    public static Object toImages(BArray pdf) {
+        try (PDDocument doc = PdfReader.loadFromBytes(pdf.getBytes())) {
+            return ValueCreator.createArrayValue(PdfReader.toImages(doc));
+        } catch (Exception e) {
+            return DiagnosticLog.readError("PDF image conversion failed: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Converts each page of a PDF file to Base64-encoded PNG images.
+     */
+    public static Object toImagesFromFile(BString filePath) {
+        try (PDDocument doc = PdfReader.loadFromFile(filePath.getValue())) {
+            return ValueCreator.createArrayValue(PdfReader.toImages(doc));
+        } catch (Exception e) {
+            return DiagnosticLog.readError("PDF image conversion failed: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Converts each page of a PDF at the given URL to Base64-encoded PNG images.
+     */
+    public static Object toImagesFromUrl(BString url) {
+        try (PDDocument doc = PdfReader.loadFromUrl(url.getValue())) {
+            return ValueCreator.createArrayValue(PdfReader.toImages(doc));
+        } catch (Exception e) {
+            return DiagnosticLog.readError("PDF image conversion failed: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Extracts text content from each page of a PDF (as byte[]).
+     */
+    public static Object extractText(BArray pdf) {
+        try (PDDocument doc = PdfReader.loadFromBytes(pdf.getBytes())) {
+            return ValueCreator.createArrayValue(PdfReader.extractText(doc));
+        } catch (Exception e) {
+            return DiagnosticLog.readError("PDF text extraction failed: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Extracts text content from each page of a PDF file.
+     */
+    public static Object extractTextFromFile(BString filePath) {
+        try (PDDocument doc = PdfReader.loadFromFile(filePath.getValue())) {
+            return ValueCreator.createArrayValue(PdfReader.extractText(doc));
+        } catch (Exception e) {
+            return DiagnosticLog.readError("PDF text extraction failed: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Extracts text content from each page of a PDF at the given URL.
+     */
+    public static Object extractTextFromUrl(BString url) {
+        try (PDDocument doc = PdfReader.loadFromUrl(url.getValue())) {
+            return ValueCreator.createArrayValue(PdfReader.extractText(doc));
+        } catch (Exception e) {
+            return DiagnosticLog.readError("PDF text extraction failed: " + e.getMessage(), e);
         }
     }
 

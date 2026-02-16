@@ -192,6 +192,28 @@ class BoxTreeBuilderTest {
         assertEquals("5px", cell.getStyle().get("padding-left"));
     }
 
+    // ===== Flex/Grid fallback =====
+
+    @Test
+    void flexDisplayCreatesBlockBox() {
+        BlockBox root = buildTree(
+                "<html><head><style>.flex { display: flex; }</style></head>"
+                + "<body><div class=\"flex\">flex content</div></body></html>");
+        assertFalse(root.getChildren().isEmpty());
+        Box flexDiv = root.getChildren().get(0);
+        assertInstanceOf(BlockBox.class, flexDiv, "display:flex should produce a BlockBox");
+    }
+
+    @Test
+    void gridDisplayCreatesBlockBox() {
+        BlockBox root = buildTree(
+                "<html><head><style>.grid { display: grid; }</style></head>"
+                + "<body><div class=\"grid\">grid content</div></body></html>");
+        assertFalse(root.getChildren().isEmpty());
+        Box gridDiv = root.getChildren().get(0);
+        assertInstanceOf(BlockBox.class, gridDiv, "display:grid should produce a BlockBox");
+    }
+
     // --- Helpers ---
 
     @SuppressWarnings("unchecked")

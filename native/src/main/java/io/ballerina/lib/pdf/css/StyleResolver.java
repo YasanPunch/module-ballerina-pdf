@@ -183,6 +183,7 @@ public class StyleResolver {
             case "border-width" -> expandFourSidedBorderWidth(style, value);
             case "border-style" -> expandFourSidedBorderStyle(style, value);
             case "border-color" -> expandFourSidedBorderColor(style, value);
+            case "border-radius" -> expandBorderRadius(style, value);
             case "background" -> expandBackground(style, value);
             case "font" -> expandFont(style, value);
             default -> style.set(property, value);
@@ -270,6 +271,23 @@ public class StyleResolver {
         style.set("border-left-color", left);
     }
 
+    private void expandBorderRadius(ComputedStyle style, String value) {
+        // CSS border-radius: 1-4 values (top-left, top-right, bottom-right, bottom-left)
+        // Does not handle the "/" syntax for elliptical radii — uses circular radii only.
+        String[] parts = value.trim().split("\\s+");
+        String tl, tr, br, bl;
+        switch (parts.length) {
+            case 1 -> { tl = tr = br = bl = parts[0]; }
+            case 2 -> { tl = br = parts[0]; tr = bl = parts[1]; }
+            case 3 -> { tl = parts[0]; tr = bl = parts[1]; br = parts[2]; }
+            default -> { tl = parts[0]; tr = parts[1]; br = parts[2]; bl = parts[3]; }
+        }
+        style.set("border-top-left-radius", tl);
+        style.set("border-top-right-radius", tr);
+        style.set("border-bottom-right-radius", br);
+        style.set("border-bottom-left-radius", bl);
+    }
+
     private void expandBackground(ComputedStyle style, String value) {
         String v = value.trim();
         // Check for url() or data: — that's a background-image
@@ -314,7 +332,7 @@ public class StyleResolver {
             // "normal" and "small-caps" are silently consumed
         }
 
-        // Size token: may contain /line-height
+        // Size token: may contain /line-height (e.g., "12px/1.5")
         String sizeToken = tokens.get(sizeIdx);
         String[] sizeParts = sizeToken.split("/");
         style.set("font-size", sizeParts[0]);
@@ -322,10 +340,19 @@ public class StyleResolver {
             style.set("line-height", sizeParts[1]);
         }
 
-        // Everything after size: font-family (rejoin preserving quotes and commas)
-        if (sizeIdx + 1 < tokens.size()) {
+        // Handle separated slash format: "12px / 1.5" (CSS parser canonicalization)
+        int familyStart = sizeIdx + 1;
+        if (familyStart < tokens.size() && tokens.get(familyStart).equals("/")) {
+            if (familyStart + 1 < tokens.size()) {
+                style.set("line-height", tokens.get(familyStart + 1));
+                familyStart += 2;
+            }
+        }
+
+        // Everything after size (and optional /line-height): font-family
+        if (familyStart < tokens.size()) {
             StringBuilder family = new StringBuilder();
-            for (int i = sizeIdx + 1; i < tokens.size(); i++) {
+            for (int i = familyStart; i < tokens.size(); i++) {
                 if (family.length() > 0) family.append(' ');
                 family.append(tokens.get(i));
             }

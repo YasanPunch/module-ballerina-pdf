@@ -203,4 +203,141 @@ class ComputedStyleTest {
         assertFalse(ComputedStyle.isInherited("width"));
         assertFalse(ComputedStyle.isInherited("height"));
     }
+
+    // --- Opacity ---
+
+    @Test
+    void getOpacityDefaultsToOne() {
+        ComputedStyle style = new ComputedStyle();
+        assertEquals(1.0f, style.getOpacity());
+    }
+
+    @Test
+    void getOpacityParsesFloat() {
+        ComputedStyle style = new ComputedStyle();
+        style.set("opacity", "0.5");
+        assertEquals(0.5f, style.getOpacity(), 0.001f);
+    }
+
+    @Test
+    void getOpacityClampsRange() {
+        ComputedStyle style = new ComputedStyle();
+
+        style.set("opacity", "-0.5");
+        assertEquals(0f, style.getOpacity());
+
+        style.set("opacity", "1.5");
+        assertEquals(1.0f, style.getOpacity());
+    }
+
+    @Test
+    void getOpacityHandlesInvalid() {
+        ComputedStyle style = new ComputedStyle();
+        style.set("opacity", "abc");
+        assertEquals(1.0f, style.getOpacity());
+    }
+
+    // --- Letter-spacing / Word-spacing ---
+
+    @Test
+    void getLetterSpacingDefaultsToZero() {
+        ComputedStyle style = new ComputedStyle();
+        assertEquals(0f, style.getLetterSpacing(12f));
+    }
+
+    @Test
+    void getLetterSpacingParsesPixels() {
+        ComputedStyle style = new ComputedStyle();
+        style.set("letter-spacing", "2px");
+        // 2px * 0.75 = 1.5pt
+        assertEquals(1.5f, style.getLetterSpacing(12f), 0.01f);
+    }
+
+    @Test
+    void getLetterSpacingNormalReturnsZero() {
+        ComputedStyle style = new ComputedStyle();
+        style.set("letter-spacing", "normal");
+        assertEquals(0f, style.getLetterSpacing(12f));
+    }
+
+    @Test
+    void getWordSpacingDefaultsToZero() {
+        ComputedStyle style = new ComputedStyle();
+        assertEquals(0f, style.getWordSpacing(12f));
+    }
+
+    @Test
+    void getWordSpacingParsesPixels() {
+        ComputedStyle style = new ComputedStyle();
+        style.set("word-spacing", "5px");
+        // 5px * 0.75 = 3.75pt
+        assertEquals(3.75f, style.getWordSpacing(12f), 0.01f);
+    }
+
+    // --- Border-radius ---
+
+    @Test
+    void getBorderRadiusDefaultsToZero() {
+        ComputedStyle style = new ComputedStyle();
+        assertEquals(0f, style.getBorderTopLeftRadius(500f, 12f));
+        assertEquals(0f, style.getBorderTopRightRadius(500f, 12f));
+        assertEquals(0f, style.getBorderBottomRightRadius(500f, 12f));
+        assertEquals(0f, style.getBorderBottomLeftRadius(500f, 12f));
+    }
+
+    @Test
+    void getBorderRadiusParsesPixels() {
+        ComputedStyle style = new ComputedStyle();
+        style.set("border-top-left-radius", "10px");
+        // 10px * 0.75 = 7.5pt
+        assertEquals(7.5f, style.getBorderTopLeftRadius(500f, 12f), 0.01f);
+    }
+
+    @Test
+    void getBorderRadiusParsesPercentage() {
+        ComputedStyle style = new ComputedStyle();
+        style.set("border-top-left-radius", "50%");
+        // 50% of 200pt container = 100pt
+        assertEquals(100f, style.getBorderTopLeftRadius(200f, 12f), 0.01f);
+    }
+
+    // --- Box-shadow ---
+
+    @Test
+    void getBoxShadowDefaultsToNull() {
+        ComputedStyle style = new ComputedStyle();
+        assertNull(style.getBoxShadow(500f, 12f));
+    }
+
+    @Test
+    void getBoxShadowNoneReturnsNull() {
+        ComputedStyle style = new ComputedStyle();
+        style.set("box-shadow", "none");
+        assertNull(style.getBoxShadow(500f, 12f));
+    }
+
+    @Test
+    void getBoxShadowParsesBasic() {
+        ComputedStyle style = new ComputedStyle();
+        style.set("box-shadow", "2px 3px");
+        ComputedStyle.BoxShadow shadow = style.getBoxShadow(500f, 12f);
+        assertNotNull(shadow);
+        assertEquals(1.5f, shadow.offsetX(), 0.01f);   // 2px * 0.75
+        assertEquals(2.25f, shadow.offsetY(), 0.01f);  // 3px * 0.75
+        assertEquals(0f, shadow.blur(), 0.01f);
+        assertEquals(0f, shadow.spread(), 0.01f);
+    }
+
+    @Test
+    void getBoxShadowParsesFullValue() {
+        ComputedStyle style = new ComputedStyle();
+        style.set("box-shadow", "2px 3px 5px 1px rgba(0,0,0,0.3)");
+        ComputedStyle.BoxShadow shadow = style.getBoxShadow(500f, 12f);
+        assertNotNull(shadow);
+        assertEquals(1.5f, shadow.offsetX(), 0.01f);   // 2px * 0.75
+        assertEquals(2.25f, shadow.offsetY(), 0.01f);  // 3px * 0.75
+        assertEquals(3.75f, shadow.blur(), 0.01f);     // 5px * 0.75
+        assertEquals(0.75f, shadow.spread(), 0.01f);   // 1px * 0.75
+        assertTrue(shadow.color().contains("rgba"), "Color should be rgba, got: " + shadow.color());
+    }
 }
