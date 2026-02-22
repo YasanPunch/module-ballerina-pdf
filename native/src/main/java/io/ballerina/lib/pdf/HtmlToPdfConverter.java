@@ -1,6 +1,7 @@
 package io.ballerina.lib.pdf;
 
 import io.ballerina.lib.pdf.box.BlockBox;
+import io.ballerina.lib.pdf.box.Box;
 import io.ballerina.lib.pdf.box.BoxTreeBuilder;
 import io.ballerina.lib.pdf.css.CssParser;
 import io.ballerina.lib.pdf.css.CssStylesheet;
@@ -14,7 +15,10 @@ import org.apache.pdfbox.pdmodel.PDDocument;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Converts a preprocessed W3C DOM Document to PDF using Apache PDFBox.
@@ -86,14 +90,78 @@ public class HtmlToPdfConverter {
             List<PageBreaker.PageSlice> pages = pageBreaker.computePages(
                     root, layoutContext.getContentHeight());
 
+            // 7b. Scale to fit maxPages if needed
+            float scale = 1.0f;
+            int maxPages = options.getMaxPages();
+            if (maxPages > 0 && pages.size() > maxPages) {
+                float totalHeight = computeVisualHeight(root);
+                float targetHeight = maxPages * layoutContext.getContentHeight();
+                scale = targetHeight / totalHeight;
+                // Re-slice into maxPages even pages
+                float sliceHeight = totalHeight / maxPages;
+                pages = new ArrayList<>();
+                for (int i = 0; i < maxPages; i++) {
+                    pages.add(new PageBreaker.PageSlice(i * sliceHeight, (i + 1) * sliceHeight));
+                }
+            }
+
+            // 7c. Build anchor map for internal links (#fragment → page position)
+            Map<String, float[]> anchorMap = new HashMap<>();
+            collectAnchors(root, pages, layoutContext, anchorMap);
+
             // 8. Paint to PDF
             ImageDecoder imageDecoder = new ImageDecoder(pdfDoc);
             PdfPageManager pageManager = new PdfPageManager(pdfDoc, layoutContext);
             PdfPainter painter = new PdfPainter(pageManager, imageDecoder, fontManager, layoutContext);
-            painter.paint(root, pages);
+            painter.setAnchorMap(anchorMap);
+            painter.paint(root, pages, scale);
+
+            // 8b. Resolve internal anchor links (requires all pages to exist)
+            painter.resolveInternalLinks(pageManager);
 
             // 9. Write PDF to output stream
             pdfDoc.save(outputStream);
         }
+    }
+
+    /**
+     * Walks the box tree collecting elements with id attributes and their final page positions.
+     * Used to resolve internal anchor links (href="#id") to PDF destinations.
+     * Each entry maps id → {pageIndex, pdfTop} where pdfTop is in PDF coordinates (bottom-up).
+     */
+    private void collectAnchors(Box box, List<PageBreaker.PageSlice> pages,
+                                 LayoutContext ctx, Map<String, float[]> map) {
+        if (box.getId() != null) {
+            float absY = box.getAbsoluteY();
+            for (int i = 0; i < pages.size(); i++) {
+                if (absY < pages.get(i).endY() || i == pages.size() - 1) {
+                    float layoutYOnPage = absY - pages.get(i).startY();
+                    float pdfTop = ctx.getPageHeight() - ctx.getMarginTop() - layoutYOnPage;
+                    map.put(box.getId(), new float[]{i, pdfTop});
+                    break;
+                }
+            }
+        }
+        for (Box child : box.getEffectiveChildren()) {
+            collectAnchors(child, pages, ctx, map);
+        }
+    }
+
+    /**
+     * Computes the actual visual height of the root box by examining child positions.
+     * When CSS parent-child margin collapsing is active, the root's content height may not
+     * include the first child's collapsed top margin, but the painter still offsets children
+     * by their margin values. This method computes the true extent that the painter will render.
+     */
+    private float computeVisualHeight(Box root) {
+        float maxChildBottom = 0;
+        for (Box child : root.getEffectiveChildren()) {
+            float childTop = child.getY() + child.getMarginTop();
+            float childBottom = childTop + child.getBorderBoxHeight() + child.getMarginBottom();
+            maxChildBottom = Math.max(maxChildBottom, childBottom);
+        }
+        return root.getBorderTopWidth() + root.getPaddingTop()
+                + maxChildBottom
+                + root.getPaddingBottom() + root.getBorderBottomWidth();
     }
 }

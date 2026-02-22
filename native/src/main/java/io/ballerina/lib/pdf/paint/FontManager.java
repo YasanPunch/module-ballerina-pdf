@@ -7,8 +7,10 @@ import org.apache.pdfbox.pdmodel.font.PDType0Font;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -29,9 +31,13 @@ public class FontManager {
             "fonts/LiberationSerif-BoldItalic.ttf",
     };
 
+    private static final String SYMBOL_FONT_FILE = "fonts/NotoSansSymbols2-Regular.ttf";
+
     // Key format: "family|bold|italic" e.g. "liberation sans|true|false"
     private final Map<String, PDFont> fontMap = new HashMap<>();
     private final Set<String> customFamilies = new HashSet<>();
+    // Fallback fonts tried when primary font can't encode a character
+    private final List<PDFont> fallbackFonts = new ArrayList<>();
     private PDFont defaultFont;
 
     public void loadFonts(PDDocument document) throws IOException {
@@ -50,6 +56,14 @@ public class FontManager {
         defaultFont = fontMap.get("liberation sans|false|false");
         if (defaultFont == null && !fontMap.isEmpty()) {
             defaultFont = fontMap.values().iterator().next();
+        }
+
+        // Load symbol font for glyph fallback (Dingbats, Math, Arrows, etc.)
+        try (InputStream is = getClass().getClassLoader().getResourceAsStream(SYMBOL_FONT_FILE)) {
+            if (is != null) {
+                PDType0Font symbolFont = PDType0Font.load(document, is);
+                fallbackFonts.add(symbolFont);
+            }
         }
     }
 
@@ -131,7 +145,7 @@ public class FontManager {
         if (text == null || text.isEmpty()) return 0;
         try {
             return font.getStringWidth(text) / 1000f * fontSize;
-        } catch (IOException e) {
+        } catch (Exception e) {
             return text.length() * fontSize * 0.5f; // rough fallback
         }
     }
@@ -163,6 +177,31 @@ public class FontManager {
             return Math.abs(desc.getDescent() / 1000f * fontSize);
         }
         return fontSize * 0.2f;
+    }
+
+    /**
+     * Finds a fallback font that can encode the given character.
+     * Returns null if no loaded font supports the character.
+     */
+    public PDFont findFallbackFont(char c) {
+        for (PDFont font : fallbackFonts) {
+            if (canEncode(font, c)) {
+                return font;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Tests whether a font can encode a character without throwing.
+     */
+    public static boolean canEncode(PDFont font, char c) {
+        try {
+            font.encode(String.valueOf(c));
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     private String buildKey(String fontFile) {

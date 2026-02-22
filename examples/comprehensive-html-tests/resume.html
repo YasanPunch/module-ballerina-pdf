@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Resume — Alexandra Petrov</title>
+<style>
+  body {
+    font-family: 'Liberation Serif', 'Times New Roman', serif;
+    font-size: 11px;
+    color: #2d3748;
+    margin: 0;
+    padding: 30px 40px;
+    line-height: 1.5;
+  }
+
+  /* Name and title */
+  .name {
+    font-family: 'Liberation Sans', Arial, sans-serif;
+    font-size: 32px;
+    font-weight: bold;
+    color: #1a202c;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 2px;
+  }
+
+  .title {
+    font-family: 'Liberation Sans', Arial, sans-serif;
+    font-size: 14px;
+    color: #718096;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    word-spacing: 2px;
+    margin-bottom: 8px;
+  }
+
+  /* Contact bar */
+  .contact-bar {
+    font-family: 'Liberation Sans', Arial, sans-serif;
+    font-size: 10px;
+    color: #4a5568;
+    padding: 8px 0;
+    border-top: 2px solid #2d3748;
+    border-bottom: 1px solid #e2e8f0;
+    margin-bottom: 20px;
+    word-spacing: 1px;
+  }
+
+  .contact-bar span {
+    margin-right: 20px;
+  }
+
+  .contact-bar a {
+    color: #2b6cb0;
+    text-decoration: none;
+  }
+
+  /* Section headers */
+  h2 {
+    font-family: 'Liberation Sans', Arial, sans-serif;
+    font-size: 13px;
+    color: #1a202c;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    border-bottom: 2px solid #2d3748;
+    padding-bottom: 4px;
+    margin-top: 18px;
+    margin-bottom: 10px;
+    word-spacing: 2px;
+  }
+
+  /* Job entries */
+  .job {
+    margin-bottom: 14px;
+  }
+
+  .job-header {
+    margin-bottom: 3px;
+  }
+
+  .job-header::after {
+    content: "";
+    display: block;
+    clear: both;
+  }
+
+  .job-title {
+    float: left;
+    font-weight: bold;
+    font-size: 12px;
+    color: #1a202c;
+  }
+
+  .job-dates {
+    float: right;
+    font-family: 'Liberation Sans', Arial, sans-serif;
+    font-size: 10px;
+    color: #718096;
+  }
+
+  /* Use div-based (block-level) floats for better renderer compatibility */
+
+  .job-company {
+    font-style: italic;
+    color: #4a5568;
+    font-size: 11px;
+    margin-bottom: 4px;
+  }
+
+  .job-location {
+    font-family: 'Liberation Sans', Arial, sans-serif;
+    font-size: 10px;
+    color: #a0aec0;
+  }
+
+  /* Achievement bullets */
+  ul {
+    margin: 4px 0 0 0;
+    padding-left: 18px;
+  }
+
+  li {
+    margin-bottom: 3px;
+    font-size: 11px;
+    line-height: 1.5;
+  }
+
+  li strong {
+    color: #1a202c;
+  }
+
+  /* Education entries */
+  .education-entry {
+    margin-bottom: 10px;
+  }
+
+  .degree {
+    font-weight: bold;
+    font-size: 12px;
+    color: #1a202c;
+  }
+
+  .school {
+    font-style: italic;
+    color: #4a5568;
+  }
+
+  .edu-details {
+    font-size: 10px;
+    color: #718096;
+    margin-top: 2px;
+  }
+
+  /* Skills section */
+  .skills-grid {
+    margin-bottom: 10px;
+  }
+
+  .skills-grid::after {
+    content: "";
+    display: block;
+    clear: both;
+  }
+
+  .skill-category {
+    float: left;
+    width: 48%;
+    margin-bottom: 8px;
+  }
+
+  .skill-category:nth-child(even) {
+    float: right;
+  }
+
+  .skill-label {
+    font-family: 'Liberation Sans', Arial, sans-serif;
+    font-size: 10px;
+    font-weight: bold;
+    color: #2d3748;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 2px;
+  }
+
+  .skill-list {
+    font-size: 11px;
+    color: #4a5568;
+    line-height: 1.6;
+  }
+
+  /* Certifications */
+  .cert-entry {
+    margin-bottom: 4px;
+    font-size: 11px;
+  }
+
+  .cert-name {
+    font-weight: bold;
+    color: #1a202c;
+  }
+
+  .cert-org {
+    color: #718096;
+    font-style: italic;
+  }
+
+  .cert-date {
+    font-family: 'Liberation Sans', Arial, sans-serif;
+    font-size: 10px;
+    color: #a0aec0;
+  }
+
+  /* Publications */
+  .pub-entry {
+    margin-bottom: 6px;
+    font-size: 11px;
+    line-height: 1.5;
+  }
+
+  .pub-title {
+    font-style: italic;
+  }
+
+  .pub-venue {
+    color: #718096;
+    font-size: 10px;
+  }
+
+  /* Divider between major sections */
+  .section-divider {
+    border: none;
+    border-top: 1px solid #e2e8f0;
+    margin: 5px 0;
+  }
+
+  /* Summary */
+  .summary {
+    font-size: 11px;
+    color: #4a5568;
+    line-height: 1.7;
+    margin-bottom: 5px;
+    text-align: justify;
+    word-spacing: 1px;
+  }
+</style>
+</head>
+<body>
+
+<div class="name">Alexandra Petrov</div>
+<div class="title">Senior Software Engineer &amp; Distributed Systems Architect</div>
+
+<div class="contact-bar">
+  <span>San Francisco, CA</span>
+  <span>+1 (415) 555-0237</span>
+  <span><a href="mailto:alexandra.petrov@email.com">alexandra.petrov@email.com</a></span>
+  <span><a href="https://linkedin.com/in/apetrovich">linkedin.com/in/apetrovich</a></span>
+  <span><a href="https://github.com/apetrovich">github.com/apetrovich</a></span>
+</div>
+
+<h2>Professional Summary</h2>
+
+<p class="summary">
+  Results-driven software engineer with 12 years of experience designing and building high-throughput distributed systems, cloud-native architectures, and data-intensive applications. Proven track record of leading engineering teams through complex technical challenges, reducing infrastructure costs by 40%, and scaling platforms to serve 50M+ daily active users. Deep expertise in consensus protocols, stream processing, and database internals. Passionate about mentoring engineers and fostering a culture of technical excellence.
+</p>
+
+<h2>Professional Experience</h2>
+
+<div class="job">
+  <div class="job-header">
+    <div class="job-dates">March 2021 — Present</div>
+    <div class="job-title">Staff Software Engineer — Platform Infrastructure</div>
+  </div>
+  <div class="job-company">Apex Cloud Technologies <span class="job-location">| San Francisco, CA</span></div>
+  <ul>
+    <li>Architected and led implementation of a <strong>multi-region active-active database proxy</strong> layer serving 2.4M queries/second with sub-5ms P99 latency, enabling seamless failover across 3 AWS regions</li>
+    <li>Designed a <strong>custom consensus protocol</strong> (based on EPaxos) for the metadata service, reducing cross-region write latency by 62% compared to the previous Raft-based implementation</li>
+    <li>Built an <strong>automated capacity planning system</strong> using ML-based demand forecasting, saving $3.2M annually in over-provisioned compute resources</li>
+    <li>Led a team of 8 engineers through a <strong>zero-downtime migration</strong> of 14TB of critical state from DynamoDB to CockroachDB, completed over 6 weeks with no customer-visible impact</li>
+    <li>Introduced <strong>deterministic simulation testing</strong> (inspired by FoundationDB's approach) to the CI pipeline, catching 23 concurrency bugs in the first quarter that traditional testing had missed</li>
+    <li>Mentored 4 senior engineers toward staff-level promotions; established the team's <strong>architecture review process</strong> adopted by 6 other teams</li>
+  </ul>
+</div>
+
+<div class="job">
+  <div class="job-header">
+    <div class="job-dates">June 2017 — February 2021</div>
+    <div class="job-title">Senior Software Engineer — Data Platform</div>
+  </div>
+  <div class="job-company">Streamline Analytics Inc. <span class="job-location">| Seattle, WA</span></div>
+  <ul>
+    <li>Built a <strong>real-time stream processing pipeline</strong> handling 800K events/second using Apache Flink, reducing end-to-end analytics latency from 15 minutes to under 30 seconds</li>
+    <li>Designed and implemented a <strong>distributed time-series database</strong> with automatic sharding, compaction, and retention policies, storing 2+ years of metrics data across 500 nodes</li>
+    <li>Reduced <strong>infrastructure costs by 40%</strong> by migrating from managed Kafka to a custom log-structured storage system with tiered storage (SSD + S3)</li>
+    <li>Developed an <strong>internal service mesh</strong> with circuit breaking, rate limiting, and automatic retries, improving platform reliability from 99.95% to 99.99% availability</li>
+    <li>Authored 3 internal RFCs adopted as company-wide standards for service communication, error handling, and observability</li>
+  </ul>
+</div>
+
+<div class="job">
+  <div class="job-header">
+    <div class="job-dates">August 2013 — May 2017</div>
+    <div class="job-title">Software Engineer</div>
+  </div>
+  <div class="job-company">DataGrid Systems <span class="job-location">| Austin, TX</span></div>
+  <ul>
+    <li>Developed core components of a <strong>distributed key-value store</strong> with tunable consistency, supporting both strong and eventual consistency modes</li>
+    <li>Implemented <strong>Raft-based log replication</strong> for the primary data path, achieving 99.999% durability with 3-way replication</li>
+    <li>Built automated <strong>chaos testing infrastructure</strong> that continuously injected network partitions, node failures, and clock skew into staging environments</li>
+    <li>Optimized the B-tree storage engine, improving <strong>read throughput by 3x</strong> through lock-free concurrent access and adaptive page sizes</li>
+  </ul>
+</div>
+
+<div class="job">
+  <div class="job-header">
+    <div class="job-dates">June 2012 — July 2013</div>
+    <div class="job-title">Junior Software Engineer</div>
+  </div>
+  <div class="job-company">TechBridge Solutions <span class="job-location">| Boston, MA</span></div>
+  <ul>
+    <li>Developed REST APIs and background job processing systems for a SaaS platform serving 5,000+ business customers</li>
+    <li>Implemented <strong>database connection pooling</strong> and query optimization, reducing average API response time by 45%</li>
+    <li>Built monitoring dashboards and alerting rules using Nagios and Graphite, improving incident detection time from hours to minutes</li>
+  </ul>
+</div>
+
+<h2>Education</h2>
+
+<div class="education-entry">
+  <div class="degree">Master of Science in Computer Science</div>
+  <div class="school">Massachusetts Institute of Technology (MIT)</div>
+  <div class="edu-details">Graduated: May 2012 | GPA: 3.92/4.0 | Thesis: "Optimistic Replication in Geo-Distributed Storage Systems"</div>
+</div>
+
+<div class="education-entry">
+  <div class="degree">Bachelor of Science in Computer Science, <em>Magna Cum Laude</em></div>
+  <div class="school">University of Michigan — Ann Arbor</div>
+  <div class="edu-details">Graduated: May 2010 | GPA: 3.87/4.0 | Minor: Mathematics</div>
+</div>
+
+<h2>Technical Skills</h2>
+
+<div class="skills-grid">
+  <div class="skill-category">
+    <div class="skill-label">Languages</div>
+    <div class="skill-list">Go, Java, Rust, Python, C++, SQL, Ballerina</div>
+  </div>
+  <div class="skill-category">
+    <div class="skill-label">Distributed Systems</div>
+    <div class="skill-list">Raft, Paxos, CRDTs, Vector Clocks, Consistent Hashing, Gossip Protocols</div>
+  </div>
+  <div class="skill-category">
+    <div class="skill-label">Data &amp; Storage</div>
+    <div class="skill-list">PostgreSQL, CockroachDB, Cassandra, Redis, Apache Kafka, Apache Flink, FoundationDB</div>
+  </div>
+  <div class="skill-category">
+    <div class="skill-label">Infrastructure</div>
+    <div class="skill-list">AWS, GCP, Kubernetes, Terraform, Docker, gRPC, Envoy, Prometheus, OpenTelemetry</div>
+  </div>
+</div>
+
+<h2>Certifications</h2>
+
+<div class="cert-entry">
+  <span class="cert-name">AWS Solutions Architect — Professional</span> |
+  <span class="cert-org">Amazon Web Services</span> |
+  <span class="cert-date">Renewed 2024</span>
+</div>
+<div class="cert-entry">
+  <span class="cert-name">Certified Kubernetes Administrator (CKA)</span> |
+  <span class="cert-org">Cloud Native Computing Foundation</span> |
+  <span class="cert-date">2023</span>
+</div>
+<div class="cert-entry">
+  <span class="cert-name">Google Cloud Professional Data Engineer</span> |
+  <span class="cert-org">Google Cloud</span> |
+  <span class="cert-date">2022</span>
+</div>
+
+<h2>Selected Publications &amp; Talks</h2>
+
+<div class="pub-entry">
+  <span class="pub-title">"Adaptive Consensus: Dynamically Switching Between Protocols Under Changing Workloads"</span>
+  <br /><span class="pub-venue">ACM Symposium on Cloud Computing (SoCC), 2023</span>
+</div>
+<div class="pub-entry">
+  <span class="pub-title">"Practical Deterministic Simulation Testing for Distributed Storage Systems"</span>
+  <br /><span class="pub-venue">USENIX Annual Technical Conference (ATC), 2022</span>
+</div>
+<div class="pub-entry">
+  <span class="pub-title">"Taming Tail Latency in Multi-Region Database Deployments"</span>
+  <br /><span class="pub-venue">Invited Talk — StrangeLoop Conference, 2021</span>
+</div>
+<div class="pub-entry">
+  <span class="pub-title">"CRDTs in Practice: Building Collaborative Applications Without Coordination"</span>
+  <br /><span class="pub-venue">QCon San Francisco, 2020</span>
+</div>
+
+</body>
+</html>

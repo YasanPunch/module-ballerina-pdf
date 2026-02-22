@@ -24,9 +24,7 @@ public class PageBreaker {
      */
     public List<PageSlice> computePages(Box root, float pageContentHeight) {
         List<PageSlice> pages = new ArrayList<>();
-        float totalHeight = root.getHeight()
-                + root.getPaddingTop() + root.getPaddingBottom()
-                + root.getBorderTopWidth() + root.getBorderBottomWidth();
+        float totalHeight = computeVisualHeight(root);
 
         if (totalHeight <= pageContentHeight) {
             // Everything fits on one page
@@ -65,6 +63,22 @@ public class PageBreaker {
         }
 
         return pages;
+    }
+
+    /**
+     * Computes the actual visual height of a root box by examining child positions.
+     * Accounts for collapsed margins that the painter will still render as offsets.
+     */
+    private float computeVisualHeight(Box root) {
+        float maxChildBottom = 0;
+        for (Box child : root.getEffectiveChildren()) {
+            float childTop = child.getY() + child.getMarginTop();
+            float childBottom = childTop + child.getBorderBoxHeight() + child.getMarginBottom();
+            maxChildBottom = Math.max(maxChildBottom, childBottom);
+        }
+        return root.getBorderTopWidth() + root.getPaddingTop()
+                + maxChildBottom
+                + root.getPaddingBottom() + root.getBorderBottomWidth();
     }
 
     /**

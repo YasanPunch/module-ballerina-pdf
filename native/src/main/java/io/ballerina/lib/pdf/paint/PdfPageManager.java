@@ -72,6 +72,17 @@ public class PdfPageManager {
 
     public PDDocument getDocument() { return document; }
     public int getPageCount() { return pages.size(); }
+    public PDPage getCurrentPage() {
+        return (currentPageIndex >= 0) ? pages.get(currentPageIndex) : null;
+    }
+
+    public PDPage getPage(int index) {
+        return (index >= 0 && index < pages.size()) ? pages.get(index) : null;
+    }
+
+    public int getCurrentPageIndex() {
+        return currentPageIndex;
+    }
 
     public float getPageHeight() { return layoutContext.getPageHeight(); }
     public float getMarginTop() { return layoutContext.getMarginTop(); }

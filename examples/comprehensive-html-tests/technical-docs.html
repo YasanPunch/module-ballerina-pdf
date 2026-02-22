@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Ballerina HTTP Client — API Reference Guide</title>
+<style>
+  body {
+    font-family: 'Liberation Sans', Arial, sans-serif;
+    font-size: 13px;
+    color: #2d3748;
+    margin: 0;
+    padding: 20px 30px;
+    line-height: 1.6;
+  }
+
+  /* Page header */
+  .doc-header {
+    border-bottom: 3px solid #7b2ff7;
+    padding-bottom: 15px;
+    margin-bottom: 25px;
+  }
+
+  .doc-header h1 {
+    font-size: 26px;
+    color: #1a202c;
+    margin-bottom: 5px;
+  }
+
+  .doc-header .version {
+    display: inline-block;
+    background-color: #7b2ff7;
+    color: white;
+    padding: 2px 10px;
+    border-radius: 3px;
+    font-size: 11px;
+    font-weight: bold;
+  }
+
+  .doc-header .updated {
+    font-size: 11px;
+    color: #a0aec0;
+    margin-left: 10px;
+  }
+
+  /* Table of contents */
+  .toc {
+    background-color: #f7fafc;
+    border: 1px solid #e2e8f0;
+    padding: 15px 20px;
+    margin-bottom: 25px;
+  }
+
+  .toc h3 {
+    font-size: 13px;
+    color: #2d3748;
+    margin-top: 0;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .toc ol {
+    margin: 0;
+    padding-left: 20px;
+  }
+
+  .toc li {
+    margin-bottom: 4px;
+    font-size: 12px;
+  }
+
+  .toc a {
+    color: #7b2ff7;
+    text-decoration: none;
+  }
+
+  .toc ol ol {
+    margin-top: 4px;
+  }
+
+  /* Section headings */
+  h2 {
+    font-size: 20px;
+    color: #1a202c;
+    margin-top: 30px;
+    border-bottom: 2px solid #e2e8f0;
+    padding-bottom: 5px;
+  }
+
+  h3 {
+    font-size: 16px;
+    color: #2d3748;
+    margin-top: 20px;
+  }
+
+  h4 {
+    font-size: 14px;
+    color: #4a5568;
+    margin-top: 15px;
+  }
+
+  /* Code blocks */
+  pre {
+    background-color: #1a202c;
+    color: #e2e8f0;
+    padding: 15px;
+    border-radius: 4px;
+    font-family: 'Liberation Mono', 'Courier New', monospace;
+    font-size: 12px;
+    line-height: 1.5;
+    margin: 12px 0;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+  }
+
+  /* Inline code */
+  code {
+    background-color: #edf2f7;
+    color: #e53e3e;
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-family: 'Liberation Mono', 'Courier New', monospace;
+    font-size: 12px;
+  }
+
+  pre code {
+    background-color: transparent;
+    color: inherit;
+    padding: 0;
+  }
+
+  /* API reference tables */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0;
+  }
+
+  thead th {
+    background-color: #edf2f7;
+    color: #2d3748;
+    padding: 8px 12px;
+    text-align: left;
+    font-size: 12px;
+    font-weight: bold;
+    border-bottom: 2px solid #cbd5e0;
+  }
+
+  tbody td {
+    padding: 8px 12px;
+    border-bottom: 1px solid #edf2f7;
+    font-size: 12px;
+    vertical-align: top;
+  }
+
+  tbody tr:nth-of-type(even) {
+    background-color: #f7fafc;
+  }
+
+  tbody td:first-child {
+    font-family: 'Liberation Mono', 'Courier New', monospace;
+    color: #7b2ff7;
+    font-size: 11px;
+  }
+
+  /* Note/warning/tip boxes */
+  .note {
+    border-left: 4px solid #4299e1;
+    background-color: #ebf8ff;
+    padding: 10px 15px;
+    margin: 15px 0;
+    font-size: 12px;
+  }
+
+  .warning {
+    border-left: 4px solid #ed8936;
+    background-color: #fffaf0;
+    padding: 10px 15px;
+    margin: 15px 0;
+    font-size: 12px;
+  }
+
+  .tip {
+    border-left: 4px solid #48bb78;
+    background-color: #f0fff4;
+    padding: 10px 15px;
+    margin: 15px 0;
+    font-size: 12px;
+  }
+
+  .note strong, .warning strong, .tip strong {
+    display: block;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    font-size: 10px;
+    letter-spacing: 1px;
+  }
+
+  .note strong { color: #2b6cb0; }
+  .warning strong { color: #c05621; }
+  .tip strong { color: #276749; }
+
+  /* Nested lists */
+  ul, ol {
+    padding-left: 22px;
+    margin-bottom: 12px;
+  }
+
+  li {
+    margin-bottom: 5px;
+  }
+
+  li ul, li ol {
+    margin-top: 5px;
+    margin-bottom: 5px;
+  }
+
+  li li {
+    margin-bottom: 3px;
+  }
+
+  li li li {
+    font-size: 12px;
+    color: #4a5568;
+  }
+
+  /* Method signature */
+  .method-sig {
+    background-color: #f7fafc;
+    border: 1px solid #e2e8f0;
+    border-left: 4px solid #7b2ff7;
+    padding: 10px 15px;
+    margin: 12px 0;
+    font-family: 'Liberation Mono', 'Courier New', monospace;
+    font-size: 12px;
+    line-height: 1.5;
+  }
+
+  /* Return type badge */
+  .return-type {
+    display: inline-block;
+    background-color: #fefcbf;
+    color: #975a16;
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-family: 'Liberation Mono', 'Courier New', monospace;
+    font-size: 11px;
+  }
+
+  /* Deprecated tag */
+  .deprecated {
+    display: inline-block;
+    background-color: #fed7d7;
+    color: #9b2c2c;
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-size: 10px;
+    font-weight: bold;
+    text-transform: uppercase;
+  }
+
+  /* Footer */
+  .doc-footer {
+    margin-top: 30px;
+    padding-top: 15px;
+    border-top: 1px solid #e2e8f0;
+    font-size: 10px;
+    color: #a0aec0;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<div class="doc-header">
+  <h1>Ballerina HTTP Client</h1>
+  <span class="version">v2.12.0</span>
+  <span class="updated">Last updated: February 2025</span>
+</div>
+
+<!-- Table of Contents -->
+<div class="toc">
+  <h3>Contents</h3>
+  <ol>
+    <li><a href="#overview">Overview</a></li>
+    <li><a href="#quickstart">Quick Start</a></li>
+    <li><a href="#configuration">Configuration</a>
+      <ol>
+        <li><a href="#client-config">Client Configuration</a></li>
+        <li><a href="#retry-config">Retry Configuration</a></li>
+        <li><a href="#circuit-breaker">Circuit Breaker</a></li>
+      </ol>
+    </li>
+    <li><a href="#api">API Reference</a>
+      <ol>
+        <li><a href="#http-methods">HTTP Methods</a></li>
+        <li><a href="#request-headers">Request Headers</a></li>
+        <li><a href="#response-handling">Response Handling</a></li>
+      </ol>
+    </li>
+    <li><a href="#error-handling">Error Handling</a></li>
+    <li><a href="#examples">Advanced Examples</a></li>
+  </ol>
+</div>
+
+<h2 id="overview">1. Overview</h2>
+
+<p>The Ballerina HTTP client provides a type-safe, resilient way to make HTTP calls to external services. It supports automatic payload binding, configurable retry policies, circuit breaker patterns, and OAuth2/JWT authentication out of the box.</p>
+
+<div class="note">
+  <strong>Note</strong>
+  This guide covers the <code>http:Client</code> API in Ballerina Swan Lake Update 13 (2201.13.x). Some features may not be available in earlier versions. Check the <a href="#">changelog</a> for version-specific differences.
+</div>
+
+<p>Key capabilities of the HTTP client:</p>
+
+<ul>
+  <li><strong>Type-safe payload binding</strong> — responses are automatically deserialized to Ballerina records
+    <ul>
+      <li>Supports JSON, XML, and form-urlencoded payloads</li>
+      <li>Validation against record types at deserialization time</li>
+      <li>Custom media type handlers via <code>http:MediaTypeHandler</code>
+        <ul>
+          <li>Register handlers for <code>application/protobuf</code>, <code>application/avro</code>, etc.</li>
+          <li>Priority-based handler resolution when multiple match</li>
+          <li>Built-in handlers for JSON, XML, text, and binary</li>
+        </ul>
+      </li>
+    </ul>
+  </li>
+  <li><strong>Resilience patterns</strong> — built-in retry, circuit breaker, and failover
+    <ul>
+      <li>Configurable retry backoff (fixed, exponential, jitter)</li>
+      <li>Circuit breaker with rolling window failure counting</li>
+    </ul>
+  </li>
+  <li><strong>Connection pooling</strong> — automatic HTTP/1.1 and HTTP/2 connection management</li>
+  <li><strong>Observability</strong> — automatic distributed tracing with OpenTelemetry and Prometheus metrics</li>
+</ul>
+
+<h2 id="quickstart">2. Quick Start</h2>
+
+<p>The simplest usage creates a client and makes a GET request with automatic type binding:</p>
+
+<pre><code>import ballerina/http;
+import ballerina/io;
+
+type Album record {
+    string title;
+    string artist;
+    decimal price;
+};
+
+public function main() returns error? {
+    http:Client albumClient = check new ("https://api.example.com");
+
+    Album album = check albumClient-&gt;/albums/["1"];
+    io:println(album.title);    // "Blue Train"
+    io:println(album.artist);   // "John Coltrane"
+    io:println(album.price);    // 56.99
+}</code></pre>
+
+<div class="tip">
+  <strong>Tip</strong>
+  Use resource method syntax (<code>client-&gt;/path</code>) instead of the older <code>client-&gt;get("/path")</code> style. Resource methods provide compile-time path validation and better IDE support.
+</div>
+
+<h2 id="configuration">3. Configuration</h2>
+
+<h3 id="client-config">3.1 Client Configuration</h3>
+
+<p>The <code>http:ClientConfiguration</code> record controls client behavior. All fields are optional with sensible defaults.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Field</th>
+      <th>Type</th>
+      <th>Default</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>httpVersion</td>
+      <td><span class="return-type">http:HttpVersion</span></td>
+      <td>HTTP_2_0</td>
+      <td>Protocol version. Falls back to HTTP/1.1 if server doesn't support HTTP/2.</td>
+    </tr>
+    <tr>
+      <td>timeout</td>
+      <td><span class="return-type">decimal</span></td>
+      <td>60.0</td>
+      <td>Request timeout in seconds. Applies to connection + response combined.</td>
+    </tr>
+    <tr>
+      <td>poolConfig</td>
+      <td><span class="return-type">http:PoolConfiguration</span></td>
+      <td>See below</td>
+      <td>Connection pool settings: max active, max idle, wait timeout.</td>
+    </tr>
+    <tr>
+      <td>secureSocket</td>
+      <td><span class="return-type">http:ClientSecureSocket</span></td>
+      <td>()</td>
+      <td>TLS/SSL configuration. Required for custom CA certificates or mTLS.</td>
+    </tr>
+    <tr>
+      <td>auth</td>
+      <td><span class="return-type">http:ClientAuthConfig</span></td>
+      <td>()</td>
+      <td>Authentication handler. Supports OAuth2, JWT, Basic, and Bearer token.</td>
+    </tr>
+    <tr>
+      <td>compression</td>
+      <td><span class="return-type">http:Compression</span></td>
+      <td>AUTO</td>
+      <td>Request/response compression. AUTO enables based on content type.</td>
+    </tr>
+    <tr>
+      <td>circuitBreaker</td>
+      <td><span class="return-type">http:CircuitBreakerConfig</span></td>
+      <td>()</td>
+      <td>Circuit breaker configuration. See section 3.3.</td>
+    </tr>
+    <tr>
+      <td>retryConfig</td>
+      <td><span class="return-type">http:RetryConfig</span></td>
+      <td>()</td>
+      <td>Retry policy configuration. See section 3.2.</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>Example with full configuration:</p>
+
+<pre><code>http:Client apiClient = check new ("https://api.example.com", {
+    timeout: 30.0,
+    httpVersion: http:HTTP_2_0,
+    retryConfig: {
+        count: 3,
+        interval: 1.0,
+        backOffFactor: 2.0,
+        maxWaitInterval: 30.0
+    },
+    auth: {
+        tokenUrl: "https://auth.example.com/oauth2/token",
+        clientId: "my-client-id",
+        clientSecret: "my-client-secret",
+        scopes: ["read", "write"]
+    }
+});</code></pre>
+
+<h3 id="retry-config">3.2 Retry Configuration</h3>
+
+<p>The retry policy controls how the client handles transient failures. Retries apply only to idempotent requests (GET, PUT, DELETE) by default.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Field</th>
+      <th>Type</th>
+      <th>Default</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>count</td>
+      <td><span class="return-type">int</span></td>
+      <td>0</td>
+      <td>Maximum number of retry attempts (0 = no retries)</td>
+    </tr>
+    <tr>
+      <td>interval</td>
+      <td><span class="return-type">decimal</span></td>
+      <td>0.0</td>
+      <td>Initial delay between retries in seconds</td>
+    </tr>
+    <tr>
+      <td>backOffFactor</td>
+      <td><span class="return-type">float</span></td>
+      <td>0.0</td>
+      <td>Multiplier for exponential backoff (e.g., 2.0 = double delay each retry)</td>
+    </tr>
+    <tr>
+      <td>maxWaitInterval</td>
+      <td><span class="return-type">decimal</span></td>
+      <td>0.0</td>
+      <td>Maximum delay cap in seconds (prevents infinite backoff growth)</td>
+    </tr>
+    <tr>
+      <td>statusCodes</td>
+      <td><span class="return-type">int[]</span></td>
+      <td>[503]</td>
+      <td>HTTP status codes that trigger a retry</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="warning">
+  <strong>Warning</strong>
+  Be careful when enabling retries for non-idempotent operations (POST). If the server processed the request but the response was lost due to a network issue, the retry will create a duplicate. Use idempotency keys or server-side deduplication when retrying POST requests.
+</div>
+
+<h3 id="circuit-breaker">3.3 Circuit Breaker</h3>
+
+<p>The circuit breaker prevents cascading failures by stopping requests to an unhealthy service. It operates in three states:</p>
+
+<ol>
+  <li><strong>Closed</strong> (normal operation) — requests flow through normally. Failures are counted.
+    <ul>
+      <li>When the failure rate exceeds the threshold, transitions to <strong>Open</strong></li>
+      <li>Failure rate is calculated over a rolling time window</li>
+    </ul>
+  </li>
+  <li><strong>Open</strong> (circuit tripped) — all requests immediately fail with a <code>CircuitBreakerError</code>
+    <ul>
+      <li>After the reset timeout, transitions to <strong>Half-Open</strong></li>
+      <li>No actual HTTP calls are made — fails fast to protect the downstream service</li>
+    </ul>
+  </li>
+  <li><strong>Half-Open</strong> (probe state) — a limited number of requests are allowed through
+    <ul>
+      <li>If they succeed, transitions back to <strong>Closed</strong></li>
+      <li>If they fail, transitions back to <strong>Open</strong></li>
+      <li>Only one probe request at a time by default</li>
+    </ul>
+  </li>
+</ol>
+
+<pre><code>http:Client resilientClient = check new ("https://api.example.com", {
+    circuitBreaker: {
+        rollingWindow: {
+            timeWindow: 60.0,       // 60-second rolling window
+            bucketSize: 10.0,       // 10-second buckets
+            requestVolumeThreshold: 20  // Minimum requests before tripping
+        },
+        failureThreshold: 0.5,     // 50% failure rate trips the circuit
+        resetTime: 30.0,           // 30 seconds in Open state before probing
+        statusCodes: [500, 502, 503]
+    }
+});</code></pre>
+
+<h2 id="api">4. API Reference</h2>
+
+<h3 id="http-methods">4.1 HTTP Methods</h3>
+
+<p>The client supports all standard HTTP methods. Each method is available in two forms: resource method syntax and remote method syntax.</p>
+
+<div class="method-sig">
+remote function get(string path, map&lt;string|string[]&gt;? headers = (), http:TargetType targetType = &lt;&gt;) returns targetType|http:ClientError
+</div>
+
+<div class="method-sig">
+remote function post(string path, http:RequestMessage message, map&lt;string|string[]&gt;? headers = (), string? mediaType = (), http:TargetType targetType = &lt;&gt;) returns targetType|http:ClientError
+</div>
+
+<div class="method-sig">
+remote function put(string path, http:RequestMessage message, map&lt;string|string[]&gt;? headers = (), string? mediaType = (), http:TargetType targetType = &lt;&gt;) returns targetType|http:ClientError
+</div>
+
+<div class="method-sig">
+remote function delete(string path, http:RequestMessage message = (), map&lt;string|string[]&gt;? headers = (), string? mediaType = (), http:TargetType targetType = &lt;&gt;) returns targetType|http:ClientError
+</div>
+
+<div class="method-sig">
+<span class="deprecated">Deprecated</span> remote function execute(string httpVerb, string path, http:RequestMessage message, ...) returns http:Response|http:ClientError
+</div>
+
+<div class="note">
+  <strong>Note</strong>
+  The <code>execute</code> method is deprecated since Swan Lake Update 10. Use the specific HTTP method functions instead, which provide better type safety and compile-time validation.
+</div>
+
+<h3 id="response-handling">4.2 Response Handling</h3>
+
+<p>Responses can be bound to specific Ballerina types using the <code>targetType</code> parameter:</p>
+
+<pre><code>// Direct type binding — JSON deserialized to record
+Album album = check client-&gt;/albums/["1"];
+
+// Get raw response for status code inspection
+http:Response response = check client-&gt;/albums/["1"];
+int statusCode = response.statusCode;
+Album album = check response.getJsonPayload().cloneWithType();
+
+// String response
+string html = check client-&gt;/pages/["home"];
+
+// Binary response
+byte[] pdf = check client-&gt;/reports/["monthly"];</code></pre>
+
+<h2 id="error-handling">5. Error Handling</h2>
+
+<p>The HTTP client uses a type hierarchy for errors, enabling fine-grained error handling:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Error Type</th>
+      <th>Parent</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>http:ClientError</td>
+      <td>error</td>
+      <td>Base type for all client errors</td>
+    </tr>
+    <tr>
+      <td>http:ClientConnectorError</td>
+      <td>ClientError</td>
+      <td>Connection failures (DNS, TCP, TLS)</td>
+    </tr>
+    <tr>
+      <td>http:RemoteServerError</td>
+      <td>ClientError</td>
+      <td>Server returned 5xx status code</td>
+    </tr>
+    <tr>
+      <td>http:ClientRequestError</td>
+      <td>ClientError</td>
+      <td>Client-side errors (4xx status codes)</td>
+    </tr>
+    <tr>
+      <td>http:PayloadBindingError</td>
+      <td>ClientError</td>
+      <td>Response could not be deserialized to target type</td>
+    </tr>
+    <tr>
+      <td>http:CircuitBreakerError</td>
+      <td>ClientError</td>
+      <td>Circuit breaker is in Open state</td>
+    </tr>
+    <tr>
+      <td>http:AllRetryAttemptsFailed</td>
+      <td>ClientError</td>
+      <td>All retry attempts exhausted</td>
+    </tr>
+    <tr>
+      <td>http:IdleTimeoutError</td>
+      <td>ClientError</td>
+      <td>Connection idle timeout exceeded</td>
+    </tr>
+  </tbody>
+</table>
+
+<pre><code>Album|error result = client-&gt;/albums/["1"];
+
+if result is http:CircuitBreakerError {
+    // Service is down, use cached data
+    return getCachedAlbum("1");
+} else if result is http:PayloadBindingError {
+    // Response format changed, log and investigate
+    log:printError("Album schema mismatch", result);
+    return error("Invalid response from album service");
+} else if result is http:ClientError {
+    // All other client errors
+    return error("Failed to fetch album", result);
+} else {
+    return result;  // Success — type is Album
+}</code></pre>
+
+<h2 id="examples">6. Advanced Examples</h2>
+
+<h3>6.1 Parallel API Calls with Workers</h3>
+
+<pre><code>function fetchDashboardData(string userId) returns DashboardData|error {
+    http:Client userApi = check new ("https://api.example.com/users");
+    http:Client orderApi = check new ("https://api.example.com/orders");
+    http:Client analyticsApi = check new ("https://api.example.com/analytics");
+
+    // Parallel calls using workers
+    worker userWorker returns UserProfile|error {
+        return userApi-&gt;/[userId];
+    }
+
+    worker orderWorker returns Order[]|error {
+        return orderApi-&gt;/users/[userId]/orders;
+    }
+
+    worker analyticsWorker returns Analytics|error {
+        return analyticsApi-&gt;/users/[userId]/stats;
+    }
+
+    UserProfile profile = check wait userWorker;
+    Order[] orders = check wait orderWorker;
+    Analytics stats = check wait analyticsWorker;
+
+    return {profile, orders, stats};
+}</code></pre>
+
+<h3>6.2 Streaming Large Responses</h3>
+
+<pre><code>function downloadLargeFile(string fileId) returns error? {
+    http:Client fileApi = check new ("https://files.example.com");
+
+    http:Response response = check fileApi-&gt;/download/[fileId];
+
+    // Stream response body to file
+    stream&lt;byte[], io:Error?&gt; byteStream =
+        check response.getByteStream();
+
+    check io:fileWriteBlocksFromStream(
+        "./downloads/" + fileId, byteStream
+    );
+
+    check byteStream.close();
+}</code></pre>
+
+<div class="doc-footer">
+  <p>Ballerina HTTP Client API Reference | Version 2.12.0 | Swan Lake Update 13</p>
+  <p>Generated from source documentation. Report issues at github.com/ballerina-platform/ballerina-library</p>
+</div>
+
+</body>
+</html>

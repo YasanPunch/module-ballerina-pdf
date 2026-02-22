@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Certificate of Achievement</title>
+<style>
+  body {
+    font-family: 'Liberation Serif', 'Times New Roman', serif;
+    font-size: 14px;
+    color: #2d3748;
+    margin: 0;
+    padding: 0;
+    background-color: #ffffff;
+  }
+
+  /* Outer decorative border */
+  .certificate-outer {
+    border: 3px solid #b7791f;
+    margin: 20px;
+    padding: 8px;
+  }
+
+  /* Inner decorative border */
+  .certificate-inner {
+    border: 1px solid #d69e2e;
+    padding: 40px 50px;
+  }
+
+  /* Inner decorative accent line */
+  .certificate-inner {
+    border-top: 3px solid #b7791f;
+  }
+
+  /* Organization name */
+  .org-name {
+    text-align: center;
+    font-family: 'Liberation Sans', Arial, sans-serif;
+    font-size: 14px;
+    color: #b7791f;
+    text-transform: uppercase;
+    letter-spacing: 4px;
+    margin-bottom: 25px;
+    word-spacing: 3px;
+  }
+
+  /* Certificate title */
+  .cert-title {
+    text-align: center;
+    font-size: 36px;
+    font-weight: bold;
+    color: #1a365d;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 5px;
+  }
+
+  .cert-subtitle {
+    text-align: center;
+    font-family: 'Liberation Sans', Arial, sans-serif;
+    font-size: 16px;
+    color: #718096;
+    text-transform: uppercase;
+    letter-spacing: 6px;
+    margin-bottom: 30px;
+  }
+
+  /* Decorative line */
+  .decorative-line {
+    text-align: center;
+    margin: 15px 0;
+    color: #d69e2e;
+    font-size: 18px;
+    letter-spacing: 8px;
+  }
+
+  /* Presented to text */
+  .presented-to {
+    text-align: center;
+    font-size: 13px;
+    color: #a0aec0;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    margin-bottom: 10px;
+  }
+
+  /* Recipient name */
+  .recipient-name {
+    text-align: center;
+    font-size: 42px;
+    font-weight: bold;
+    color: #1a365d;
+    font-style: italic;
+    margin-bottom: 5px;
+    letter-spacing: 1px;
+  }
+
+  .recipient-title {
+    text-align: center;
+    font-family: 'Liberation Sans', Arial, sans-serif;
+    font-size: 12px;
+    color: #718096;
+    margin-bottom: 25px;
+  }
+
+  /* Achievement description */
+  .achievement-desc {
+    text-align: center;
+    font-size: 14px;
+    color: #4a5568;
+    max-width: 600px;
+    margin: 0 auto 20px auto;
+    line-height: 1.8;
+  }
+
+  /* Course/program details */
+  .program-name {
+    text-align: center;
+    font-family: 'Liberation Sans', Arial, sans-serif;
+    font-size: 20px;
+    font-weight: bold;
+    color: #2c5282;
+    margin-bottom: 5px;
+  }
+
+  .program-details {
+    text-align: center;
+    font-family: 'Liberation Sans', Arial, sans-serif;
+    font-size: 11px;
+    color: #a0aec0;
+    margin-bottom: 25px;
+  }
+
+  /* Credential details box */
+  .credential-box {
+    max-width: 500px;
+    margin: 20px auto;
+    background-color: #fffff0;
+    border: 1px solid #ecc94b;
+    border-radius: 6px;
+    padding: 15px 20px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
+  }
+
+  .credential-box table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .credential-box td {
+    padding: 4px 8px;
+    font-size: 11px;
+  }
+
+  .credential-box td:first-child {
+    font-family: 'Liberation Sans', Arial, sans-serif;
+    font-weight: bold;
+    color: #975a16;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    width: 140px;
+    font-size: 10px;
+  }
+
+  .credential-box td:last-child {
+    color: #2d3748;
+  }
+
+  /* Skills/competencies list */
+  .competencies {
+    max-width: 500px;
+    margin: 20px auto;
+    text-align: center;
+  }
+
+  .competencies-title {
+    font-family: 'Liberation Sans', Arial, sans-serif;
+    font-size: 11px;
+    color: #a0aec0;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-bottom: 8px;
+  }
+
+  .competency-tag {
+    display: inline-block;
+    background-color: #ebf8ff;
+    color: #2b6cb0;
+    border: 1px solid #bee3f8;
+    padding: 4px 12px;
+    border-radius: 15px;
+    font-family: 'Liberation Sans', Arial, sans-serif;
+    font-size: 10px;
+    margin: 3px 2px;
+    letter-spacing: 0.5px;
+  }
+
+  /* Signature area */
+  .signatures {
+    margin-top: 35px;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .signatures::after {
+    content: "";
+    display: block;
+    clear: both;
+  }
+
+  .signature-block {
+    float: left;
+    width: 45%;
+    text-align: center;
+  }
+
+  .signature-block:last-child {
+    float: right;
+  }
+
+  .signature-line {
+    border-bottom: 1px solid #2d3748;
+    margin-bottom: 5px;
+    padding-bottom: 30px;
+  }
+
+  .signature-name {
+    font-weight: bold;
+    font-size: 13px;
+    color: #1a202c;
+  }
+
+  .signature-role {
+    font-family: 'Liberation Sans', Arial, sans-serif;
+    font-size: 10px;
+    color: #718096;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  /* Date and seal area */
+  .date-seal {
+    text-align: center;
+    margin-top: 25px;
+  }
+
+  .issue-date {
+    font-family: 'Liberation Sans', Arial, sans-serif;
+    font-size: 11px;
+    color: #718096;
+    margin-bottom: 8px;
+  }
+
+  /* Seal representation (circular element) */
+  .seal {
+    display: inline-block;
+    width: 70px;
+    height: 70px;
+    border: 3px solid #b7791f;
+    border-radius: 35px;
+    text-align: center;
+    line-height: 20px;
+    padding-top: 12px;
+    color: #b7791f;
+    font-family: 'Liberation Sans', Arial, sans-serif;
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    box-shadow: 0 0 0 2px #ffffff, 0 0 0 4px #d69e2e;
+    overflow: hidden;
+  }
+
+  .seal .seal-text {
+    font-weight: bold;
+    font-size: 11px;
+  }
+
+  /* Verification footer */
+  .verification {
+    text-align: center;
+    margin-top: 20px;
+    font-family: 'Liberation Sans', Arial, sans-serif;
+    font-size: 9px;
+    color: #cbd5e0;
+  }
+</style>
+</head>
+<body>
+
+<div class="certificate-outer">
+  <div class="certificate-inner">
+    <!-- Organization -->
+    <div class="org-name">Horizon Institute of Technology</div>
+
+    <!-- Certificate Type -->
+    <div class="cert-title">Certificate</div>
+    <div class="cert-subtitle">of Achievement</div>
+
+    <div class="decorative-line">&#10070; &#10070; &#10070;</div>
+
+    <!-- Recipient -->
+    <div class="presented-to">This is proudly presented to</div>
+    <div class="recipient-name">Marcus J. Richardson</div>
+    <div class="recipient-title">Senior Software Architect, Apex Cloud Technologies</div>
+
+    <!-- Achievement Description -->
+    <div class="achievement-desc">
+      In recognition of outstanding performance and successful completion of the comprehensive professional certification program, demonstrating exceptional expertise in modern software architecture, distributed systems design, and cloud-native application development.
+    </div>
+
+    <!-- Program -->
+    <div class="program-name">Advanced Cloud Architecture &amp; Distributed Systems</div>
+    <div class="program-details">Professional Certification Program — Cohort XII | 240 Hours | 16 Weeks</div>
+
+    <!-- Credential Details -->
+    <div class="credential-box">
+      <table>
+        <tr>
+          <td>Credential ID</td>
+          <td>HIT-ACADS-2024-0847-MJR</td>
+        </tr>
+        <tr>
+          <td>Issue Date</td>
+          <td>December 15, 2024</td>
+        </tr>
+        <tr>
+          <td>Expiry Date</td>
+          <td>December 14, 2027 (3-year validity)</td>
+        </tr>
+        <tr>
+          <td>Final Score</td>
+          <td>94.7 / 100 — Distinction</td>
+        </tr>
+        <tr>
+          <td>Verification</td>
+          <td>verify.horizontech.edu/HIT-ACADS-2024-0847-MJR</td>
+        </tr>
+      </table>
+    </div>
+
+    <!-- Competencies Demonstrated -->
+    <div class="competencies">
+      <div class="competencies-title">Competencies Demonstrated</div>
+      <span class="competency-tag">Microservices Architecture</span>
+      <span class="competency-tag">Consensus Protocols</span>
+      <span class="competency-tag">Event-Driven Systems</span>
+      <span class="competency-tag">Kubernetes Orchestration</span>
+      <span class="competency-tag">Observability Engineering</span>
+      <span class="competency-tag">Database Internals</span>
+      <span class="competency-tag">Security Architecture</span>
+      <span class="competency-tag">Performance Engineering</span>
+      <span class="competency-tag">Capacity Planning</span>
+      <span class="competency-tag">Incident Management</span>
+    </div>
+
+    <div class="decorative-line">&#10070; &#10070; &#10070;</div>
+
+    <!-- Signatures -->
+    <div class="signatures">
+      <div class="signature-block">
+        <div class="signature-line"></div>
+        <div class="signature-name">Dr. Elena Vasquez</div>
+        <div class="signature-role">Program Director</div>
+      </div>
+      <div class="signature-block">
+        <div class="signature-line"></div>
+        <div class="signature-name">Prof. James Whitfield</div>
+        <div class="signature-role">Dean of Engineering</div>
+      </div>
+    </div>
+
+    <!-- Date and Seal -->
+    <div class="date-seal">
+      <div class="issue-date">Issued on December 15, 2024 — San Francisco, California</div>
+      <div class="seal">
+        <span class="seal-text">HIT</span><br />
+        Official<br />
+        Seal
+      </div>
+    </div>
+
+    <!-- Verification -->
+    <div class="verification">
+      This certificate can be verified at verify.horizontech.edu | Tamper-evident digital credential powered by blockchain verification
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

@@ -22,35 +22,36 @@ public class ConverterOptions {
     public static final float LEGAL_WIDTH = 612f;
     public static final float LEGAL_HEIGHT = 1008f;
 
-    // Default margin: 36pt = 0.5 inch
-    public static final float DEFAULT_MARGIN = 36f;
+    // Default margin: 0pt (no page margin; CSS controls spacing)
+    public static final float DEFAULT_MARGIN = 0f;
 
-    private final float defaultFontSizePt;
-    private final float pageWidth;
-    private final float pageHeight;
-    private final float marginTop;
-    private final float marginRight;
-    private final float marginBottom;
-    private final float marginLeft;
-    private final String additionalCss;
-    private final boolean preprocess;
-    private final Map<String, byte[]> customFonts;
+    private float defaultFontSizePt;
+    private float pageWidth;
+    private float pageHeight;
+    private float marginTop;
+    private float marginRight;
+    private float marginBottom;
+    private float marginLeft;
+    private String additionalCss;
+    private boolean preprocess;
+    private Map<String, byte[]> customFonts;
+    private int maxPages;
 
     /** Default options: 12pt font, A4, 36pt margins, no additional CSS, preprocessing enabled. */
     public ConverterOptions() {
         this(DEFAULT_FONT_SIZE_PT, A4_WIDTH, A4_HEIGHT,
                 DEFAULT_MARGIN, DEFAULT_MARGIN, DEFAULT_MARGIN, DEFAULT_MARGIN,
-                null, true, null);
+                null, true, null, 0);
     }
 
     /** Convenience constructor for font size only (backwards compatibility). */
     public ConverterOptions(float defaultFontSizePt) {
         this(defaultFontSizePt, A4_WIDTH, A4_HEIGHT,
                 DEFAULT_MARGIN, DEFAULT_MARGIN, DEFAULT_MARGIN, DEFAULT_MARGIN,
-                null, true, null);
+                null, true, null, 0);
     }
 
-    /** Constructor with all options except custom fonts (backwards compatibility). */
+    /** Constructor with all options except custom fonts and maxPages (backwards compatibility). */
     public ConverterOptions(float defaultFontSizePt,
                             float pageWidth, float pageHeight,
                             float marginTop, float marginRight,
@@ -58,7 +59,19 @@ public class ConverterOptions {
                             String additionalCss, boolean preprocess) {
         this(defaultFontSizePt, pageWidth, pageHeight,
                 marginTop, marginRight, marginBottom, marginLeft,
-                additionalCss, preprocess, null);
+                additionalCss, preprocess, null, 0);
+    }
+
+    /** Constructor with all options except maxPages (backwards compatibility). */
+    public ConverterOptions(float defaultFontSizePt,
+                            float pageWidth, float pageHeight,
+                            float marginTop, float marginRight,
+                            float marginBottom, float marginLeft,
+                            String additionalCss, boolean preprocess,
+                            Map<String, byte[]> customFonts) {
+        this(defaultFontSizePt, pageWidth, pageHeight,
+                marginTop, marginRight, marginBottom, marginLeft,
+                additionalCss, preprocess, customFonts, 0);
     }
 
     /** Full constructor with all options. */
@@ -67,7 +80,7 @@ public class ConverterOptions {
                             float marginTop, float marginRight,
                             float marginBottom, float marginLeft,
                             String additionalCss, boolean preprocess,
-                            Map<String, byte[]> customFonts) {
+                            Map<String, byte[]> customFonts, int maxPages) {
         this.defaultFontSizePt = defaultFontSizePt;
         this.pageWidth = pageWidth;
         this.pageHeight = pageHeight;
@@ -78,6 +91,7 @@ public class ConverterOptions {
         this.additionalCss = additionalCss;
         this.preprocess = preprocess;
         this.customFonts = customFonts;
+        this.maxPages = maxPages;
     }
 
     /** Returns options configured for CIBIL reports (9pt, A4, tight margins). For testing only. */
@@ -111,4 +125,17 @@ public class ConverterOptions {
     public String getAdditionalCss() { return additionalCss; }
     public boolean isPreprocess() { return preprocess; }
     public Map<String, byte[]> getCustomFonts() { return customFonts; }
+    public int getMaxPages() { return maxPages; }
+
+    public void setDefaultFontSizePt(float defaultFontSizePt) { this.defaultFontSizePt = defaultFontSizePt; }
+    public void setPageWidth(float pageWidth) { this.pageWidth = pageWidth; }
+    public void setPageHeight(float pageHeight) { this.pageHeight = pageHeight; }
+    public void setMarginTop(float marginTop) { this.marginTop = marginTop; }
+    public void setMarginRight(float marginRight) { this.marginRight = marginRight; }
+    public void setMarginBottom(float marginBottom) { this.marginBottom = marginBottom; }
+    public void setMarginLeft(float marginLeft) { this.marginLeft = marginLeft; }
+    public void setAdditionalCss(String additionalCss) { this.additionalCss = additionalCss; }
+    public void setPreprocess(boolean preprocess) { this.preprocess = preprocess; }
+    public void setCustomFonts(Map<String, byte[]> customFonts) { this.customFonts = customFonts; }
+    public void setMaxPages(int maxPages) { this.maxPages = maxPages; }
 }

@@ -2,7 +2,9 @@ package io.ballerina.lib.pdf.css;
 
 import io.ballerina.lib.pdf.util.CssValueParser;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
@@ -102,36 +104,84 @@ public class ComputedStyle {
     /** Parsed box-shadow values. */
     public record BoxShadow(float offsetX, float offsetY, float blur, float spread, String color) {}
 
-    // Pattern to extract length values from box-shadow, stopping before a color keyword or function
+    // Pattern to extract length values from box-shadow
     private static final Pattern SHADOW_LENGTH = Pattern.compile("-?[\\d.]+(?:px|pt|em|rem|%|mm|cm|in)?");
+
+    // Pattern to extract color from a shadow value (hex, rgb/rgba, hsl/hsla)
+    private static final Pattern COLOR_IN_SHADOW = Pattern.compile(
+            "#[0-9a-fA-F]{3,8}|rgba?\\([^)]+\\)|hsla?\\([^)]+\\)");
 
     /**
      * Parses the box-shadow property. Returns null if none/unset.
-     * Supports a single shadow: offsetX offsetY [blur [spread]] [color]
+     * Supports a single shadow: offsetX offsetY [blur [spread]] [color].
+     * For multiple shadows, use {@link #getBoxShadows(float, float)}.
      */
     public BoxShadow getBoxShadow(float containerWidth, float fontSize) {
+        List<BoxShadow> shadows = getBoxShadows(containerWidth, fontSize);
+        return shadows.isEmpty() ? null : shadows.get(0);
+    }
+
+    /**
+     * Parses the box-shadow property into a list of shadows.
+     * Supports comma-separated values like "0 0 0 2px #fff, 0 0 0 4px #d69e2e".
+     * Returns an empty list if none/unset.
+     */
+    public List<BoxShadow> getBoxShadows(float containerWidth, float fontSize) {
         String val = get("box-shadow");
-        if (val == null || val.equals("none")) return null;
+        if (val == null || val.equals("none")) return List.of();
         val = val.trim();
 
-        // Extract all length tokens and the remaining color
-        Matcher m = SHADOW_LENGTH.matcher(val);
-        java.util.List<String> lengths = new java.util.ArrayList<>();
-        int lastEnd = 0;
-        StringBuilder colorParts = new StringBuilder();
-        while (m.find()) {
-            // Collect text before this match as potential color
-            String before = val.substring(lastEnd, m.start()).trim();
-            if (!before.isEmpty() && !before.equals(",")) {
-                colorParts.append(before).append(' ');
+        // Split on commas that are not inside parentheses (e.g. rgba(...))
+        List<String> parts = splitOnTopLevelCommas(val);
+        List<BoxShadow> result = new ArrayList<>();
+
+        for (String part : parts) {
+            BoxShadow shadow = parseSingleShadow(part.trim(), containerWidth, fontSize);
+            if (shadow != null) {
+                result.add(shadow);
             }
-            lengths.add(m.group());
-            lastEnd = m.end();
         }
-        // Remaining text after last length is color
-        String trailing = val.substring(lastEnd).trim();
-        if (!trailing.isEmpty()) {
-            colorParts.append(trailing);
+        return result;
+    }
+
+    /**
+     * Splits a string on commas that are not nested inside parentheses.
+     */
+    private static List<String> splitOnTopLevelCommas(String value) {
+        List<String> parts = new ArrayList<>();
+        int depth = 0;
+        int start = 0;
+        for (int i = 0; i < value.length(); i++) {
+            char c = value.charAt(i);
+            if (c == '(') depth++;
+            else if (c == ')') depth--;
+            else if (c == ',' && depth == 0) {
+                parts.add(value.substring(start, i));
+                start = i + 1;
+            }
+        }
+        parts.add(value.substring(start));
+        return parts;
+    }
+
+    private BoxShadow parseSingleShadow(String val, float containerWidth, float fontSize) {
+        if (val.isEmpty()) return null;
+
+        // Extract color first — hex colors like #d69e2e contain digits that the
+        // length regex would otherwise match as spurious length values
+        Matcher cm = COLOR_IN_SHADOW.matcher(val);
+        String shadowColor = null;
+        String lengthPart = val;
+        if (cm.find()) {
+            shadowColor = cm.group();
+            lengthPart = val.substring(0, cm.start()) + val.substring(cm.end());
+        }
+
+        // Extract lengths from the color-free string
+        Matcher m = SHADOW_LENGTH.matcher(lengthPart);
+        List<String> lengths = new ArrayList<>();
+        while (m.find()) {
+            lengths.add(m.group());
         }
 
         if (lengths.size() < 2) return null;
@@ -140,10 +190,33 @@ public class ComputedStyle {
         float oy = CssValueParser.toPoints(lengths.get(1), containerWidth, fontSize);
         float blur = lengths.size() > 2 ? CssValueParser.toPoints(lengths.get(2), containerWidth, fontSize) : 0;
         float spread = lengths.size() > 3 ? CssValueParser.toPoints(lengths.get(3), containerWidth, fontSize) : 0;
-        String shadowColor = colorParts.toString().trim();
-        if (shadowColor.isEmpty()) shadowColor = "rgba(0,0,0,1)";
+        if (shadowColor == null) shadowColor = "rgba(0,0,0,1)";
 
         return new BoxShadow(ox, oy, blur, spread, shadowColor);
+    }
+
+    /**
+     * Returns the computed line-height in points.
+     * Supports: "normal" (returns -1), unitless multiplier (1.8),
+     * px, em, pt, %, and "inherit"/"initial" (returns -1).
+     * A return value of -1 means the caller should use font metrics.
+     */
+    public float getLineHeight(float fontSize) {
+        String val = get("line-height");
+        if (val == null || "normal".equals(val) || "inherit".equals(val) || "initial".equals(val)) {
+            return -1;
+        }
+        val = val.trim();
+        if (val.endsWith("%")) {
+            try { return Float.parseFloat(val.replace("%", "")) / 100f * fontSize; }
+            catch (NumberFormatException e) { return -1; }
+        }
+        if (val.endsWith("px") || val.endsWith("pt") || val.endsWith("em")) {
+            return CssValueParser.toPoints(val, 0, fontSize);
+        }
+        // Unitless number: "1.8" → 1.8 * fontSize
+        try { return Float.parseFloat(val) * fontSize; }
+        catch (NumberFormatException e) { return -1; }
     }
 
     public float getLetterSpacing(float fontSize) {
@@ -218,6 +291,16 @@ public class ComputedStyle {
         return CssValueParser.toPoints(get("margin-left"), containerWidth, fontSize);
     }
 
+    public boolean isMarginLeftAuto() {
+        String val = get("margin-left");
+        return val != null && val.trim().equalsIgnoreCase("auto");
+    }
+
+    public boolean isMarginRightAuto() {
+        String val = get("margin-right");
+        return val != null && val.trim().equalsIgnoreCase("auto");
+    }
+
     public float getPaddingTop(float containerWidth, float fontSize) {
         return CssValueParser.toPoints(get("padding-top"), containerWidth, fontSize);
     }
@@ -235,18 +318,26 @@ public class ComputedStyle {
     }
 
     public float getBorderTopWidth(float containerWidth, float fontSize) {
+        String style = getBorderTopStyle();
+        if ("none".equals(style) || "hidden".equals(style)) return 0;
         return parseBorderWidth(get("border-top-width"), containerWidth, fontSize);
     }
 
     public float getBorderRightWidth(float containerWidth, float fontSize) {
+        String style = getBorderRightStyle();
+        if ("none".equals(style) || "hidden".equals(style)) return 0;
         return parseBorderWidth(get("border-right-width"), containerWidth, fontSize);
     }
 
     public float getBorderBottomWidth(float containerWidth, float fontSize) {
+        String style = getBorderBottomStyle();
+        if ("none".equals(style) || "hidden".equals(style)) return 0;
         return parseBorderWidth(get("border-bottom-width"), containerWidth, fontSize);
     }
 
     public float getBorderLeftWidth(float containerWidth, float fontSize) {
+        String style = getBorderLeftStyle();
+        if ("none".equals(style) || "hidden".equals(style)) return 0;
         return parseBorderWidth(get("border-left-width"), containerWidth, fontSize);
     }
 

@@ -21,7 +21,8 @@ public enum PageSize {
     LEGAL
 }
 
-# Page margins in points (1 point = 1/72 inch).
+# Page margins in points (1 point = 1/72 inch). 
+# This is the default margin for the PDF output.
 #
 # + top - Top margin
 # + right - Right margin
@@ -38,7 +39,7 @@ public type PageMargins record {|
 #
 # + defaultFontSizePt - Base font size in points. CSS "medium" maps to this value. Default: 12.0 (CSS spec).
 # + pageSize - Page size for the PDF output. Default: A4.
-# + margins - Page margins in points (top, right, bottom, left). Default: 36pt (0.5 inch) on all sides.
+# + margins - Page margins in points (top, right, bottom, left). Default: 0 (no page margin; CSS controls spacing).
 # + preprocess - Whether to run HTML preprocessing (Jsoup cleanup, CSS injection).
 #                Disable only if input is already well-formed XHTML. Default: true.
 # + additionalCss - Additional CSS to inject into the document before conversion.
@@ -47,11 +48,14 @@ public type PageMargins record {|
 #                 file content as bytes. The font name is used for CSS font-family matching.
 #                 To register weight/style variants, use suffixes: "MyFont Bold", "MyFont Italic",
 #                 "MyFont BoldItalic". CSS then references just `font-family: MyFont`.
+# + maxPages - Maximum number of pages in the output PDF. When set to a positive value,
+#              content is scaled to fit within this page limit. 0 means no limit (default).
 public type ConversionOptions record {|
     float defaultFontSizePt = 12.0;
     PageSize pageSize = A4;
-    PageMargins margins = {top: 36, right: 36, bottom: 36, left: 36};
+    PageMargins margins = {top: 0, right: 0, bottom: 0, left: 0};
     boolean preprocess = true;
     string? additionalCss = ();
     map<byte[]>? customFonts = ();
+    int maxPages = 0;
 |};

@@ -16,29 +16,19 @@
 
 import ballerina/jballerina.java;
 
-# Converts each page of a PDF document to a Base64-encoded PNG image.
+// --- HTML-to-PDF conversion ---
+
+# Converts HTML content to PDF bytes.
 #
-# + pdf - The PDF document as a byte array
-# + return - An array of Base64-encoded PNG strings (one per page), or an error
-public isolated function toImages(byte[] pdf) returns string[]|Error = @java:Method {
+# + html - The HTML string to convert (can be a full document or fragment)
+# + options - Conversion options (all optional with defaults)
+# + return - PDF file content as a byte array, or an error
+public isolated function convertToPdf(string html, *ConversionOptions options)
+    returns byte[]|Error = @java:Method {
     'class: "io.ballerina.lib.pdf.Native"
 } external;
 
-# Converts each page of a PDF file to a Base64-encoded PNG image.
-#
-# + filePath - Path to the PDF file
-# + return - An array of Base64-encoded PNG strings (one per page), or an error
-public isolated function toImagesFromFile(string filePath) returns string[]|Error = @java:Method {
-    'class: "io.ballerina.lib.pdf.Native"
-} external;
-
-# Converts each page of a PDF at the given URL to a Base64-encoded PNG image.
-#
-# + url - URL pointing to a PDF document
-# + return - An array of Base64-encoded PNG strings (one per page), or an error
-public isolated function toImagesFromUrl(string url) returns string[]|Error = @java:Method {
-    'class: "io.ballerina.lib.pdf.Native"
-} external;
+// --- Text extraction ---
 
 # Extracts text content from each page of a PDF document.
 #
@@ -61,5 +51,31 @@ public isolated function extractTextFromFile(string filePath) returns string[]|E
 # + url - URL pointing to a PDF document
 # + return - An array of text strings (one per page), or an error
 public isolated function extractTextFromUrl(string url) returns string[]|Error = @java:Method {
+    'class: "io.ballerina.lib.pdf.Native"
+} external;
+
+// --- Image conversion ---
+
+# Converts each page of a PDF document to a Base64-encoded PNG image.
+#
+# + pdf - The PDF document as a byte array
+# + return - An array of Base64-encoded PNG strings (one per page), or an error
+public isolated function toImages(byte[] pdf) returns string[]|Error = @java:Method {
+    'class: "io.ballerina.lib.pdf.Native"
+} external;
+
+# Converts each page of a PDF file to a Base64-encoded PNG image.
+#
+# + filePath - Path to the PDF file
+# + return - An array of Base64-encoded PNG strings (one per page), or an error
+public isolated function toImagesFromFile(string filePath) returns string[]|Error = @java:Method {
+    'class: "io.ballerina.lib.pdf.Native"
+} external;
+
+# Converts each page of a PDF at the given URL to a Base64-encoded PNG image.
+#
+# + url - URL pointing to a PDF document
+# + return - An array of Base64-encoded PNG strings (one per page), or an error
+public isolated function toImagesFromUrl(string url) returns string[]|Error = @java:Method {
     'class: "io.ballerina.lib.pdf.Native"
 } external;

@@ -172,8 +172,8 @@ public class BlockFormattingContext {
             placeX = containerWidth - rightIntrusion - outerWidth;
         }
 
-        block.setX(placeX + block.getMarginLeft());
-        block.setY(placeY + block.getMarginTop());
+        block.setX(placeX);
+        block.setY(placeY);
 
         return new FloatBox(block, placeX, placeY, outerWidth, outerHeight, side);
     }
@@ -278,6 +278,17 @@ public class BlockFormattingContext {
         float pendingMarginBottom = 0;
         boolean isFirstChild = true;
 
+        // CSS 2.1 §8.3.1 parent-child margin collapsing:
+        // Parent's top margin collapses with first child's top margin when parent has
+        // no border-top and no padding-top. Similarly, parent's bottom margin collapses
+        // with last child's bottom margin when parent has no border-bottom and no padding-bottom.
+        ComputedStyle containerStyle = container.getStyle();
+        boolean collapseFirstChildTop = containerStyle != null
+                && container.getBorderTopWidth() == 0 && container.getPaddingTop() == 0;
+        boolean collapseLastChildBottom = containerStyle != null
+                && container.getBorderBottomWidth() == 0 && container.getPaddingBottom() == 0
+                && (containerStyle.getHeight(0, 0) < 0); // height: auto
+
         for (Box child : orderedChildren) {
             // Handle floated children — floats don't participate in margin collapsing
             if (hasFloats && isFloated(child)) {
@@ -316,15 +327,25 @@ public class BlockFormattingContext {
 
                 // Collapse top margin with previous sibling's bottom margin
                 float effectiveMarginTop;
-                if (!isFirstChild && collapseMargins) {
+                if (isFirstChild && collapseFirstChildTop && collapseMargins) {
+                    // Parent-first-child collapsing: margin collapses with parent's top margin
+                    effectiveMarginTop = 0;
+                } else if (!isFirstChild && collapseMargins) {
                     effectiveMarginTop = Math.max(pendingMarginBottom, table.getMarginTop());
                 } else {
                     effectiveMarginTop = (isFirstChild ? 0 : pendingMarginBottom) + table.getMarginTop();
                 }
                 cursorY += effectiveMarginTop;
 
-                table.setX(0);
-                table.setY(cursorY);
+                // CSS 2.1 §10.3.3: center block with margin-left: auto and margin-right: auto
+                float tableXOffset = 0;
+                if (tableStyle != null && tableStyle.isMarginLeftAuto() && tableStyle.isMarginRightAuto()) {
+                    float totalOuter = tableContentWidth + table.getBorderLeftWidth() + table.getPaddingLeft()
+                            + table.getPaddingRight() + table.getBorderRightWidth();
+                    tableXOffset = Math.max(0, (availableWidth - totalOuter) / 2f);
+                }
+                table.setX(tableXOffset);
+                table.setY(cursorY - table.getMarginTop());
 
                 float tableHeight = tableEngine.layout(table, tableContentWidth);
                 table.setHeight(tableHeight);
@@ -366,15 +387,28 @@ public class BlockFormattingContext {
 
                 // Collapse top margin with previous sibling's bottom margin
                 float effectiveMarginTop;
-                if (!isFirstChild && collapseMargins) {
+                if (isFirstChild && collapseFirstChildTop && collapseMargins) {
+                    // Parent-first-child collapsing: margin collapses with parent's top margin
+                    effectiveMarginTop = 0;
+                } else if (!isFirstChild && collapseMargins) {
                     effectiveMarginTop = Math.max(pendingMarginBottom, block.getMarginTop());
                 } else {
                     effectiveMarginTop = (isFirstChild ? 0 : pendingMarginBottom) + block.getMarginTop();
                 }
                 cursorY += effectiveMarginTop;
 
-                block.setX(0);
-                block.setY(cursorY);
+                // CSS 2.1 §10.3.3: center block with margin-left: auto and margin-right: auto.
+                // Applies when the block is narrower than the container (due to explicit width
+                // or max-width constraint) and both horizontal margins are auto.
+                float blockXOffset = 0;
+                float totalOuter = blockWidth + block.getBorderLeftWidth() + block.getPaddingLeft()
+                        + block.getPaddingRight() + block.getBorderRightWidth();
+                if (style.isMarginLeftAuto() && style.isMarginRightAuto()
+                        && totalOuter < availableWidth) {
+                    blockXOffset = (availableWidth - totalOuter) / 2f;
+                }
+                block.setX(blockXOffset);
+                block.setY(cursorY - block.getMarginTop());
                 block.setWidth(blockWidth);
 
                 float contentHeight = layoutChildren(block, blockWidth);
@@ -415,8 +449,12 @@ public class BlockFormattingContext {
             }
         }
 
-        // Flush any remaining pending bottom margin
-        cursorY += pendingMarginBottom;
+        // Flush any remaining pending bottom margin.
+        // CSS 2.1 §8.3.1: if parent has no border-bottom/padding-bottom and height is auto,
+        // last child's bottom margin collapses with parent's bottom margin (skip it here).
+        if (!collapseLastChildBottom) {
+            cursorY += pendingMarginBottom;
+        }
 
         // Container height must encompass floats
         if (hasFloats) {

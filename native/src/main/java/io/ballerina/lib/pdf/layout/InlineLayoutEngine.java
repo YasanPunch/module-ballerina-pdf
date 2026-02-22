@@ -151,6 +151,7 @@ public class InlineLayoutEngine {
                     wordRun.setFontSize(textRun.getFontSize());
                     wordRun.setSuperscript(textRun.isSuperscript());
                     wordRun.setSubscript(textRun.isSubscript());
+                    if (textRun.getHref() != null) wordRun.setHref(textRun.getHref());
                     float wordWidth = fontManager.measureText(word, textRun.getFont(), textRun.getFontSize());
                     // Add letter-spacing between characters
                     if (letterSpacing != 0 && word.length() > 1) {
@@ -163,8 +164,11 @@ public class InlineLayoutEngine {
                         }
                     }
                     wordRun.setTextWidth(wordWidth);
-                    items.add(new InlineItem(wordRun, wordWidth,
-                            fontManager.getLineHeight(textRun.getFont(), textRun.getFontSize())));
+                    float cssLH = textStyle != null ? textStyle.getLineHeight(textRun.getFontSize()) : -1;
+                    float effectiveLH = cssLH > 0
+                            ? cssLH
+                            : fontManager.getLineHeight(textRun.getFont(), textRun.getFontSize());
+                    items.add(new InlineItem(wordRun, wordWidth, effectiveLH));
                 }
             } else if (box instanceof ReplacedBox replaced) {
                 float w = replaced.getIntrinsicWidth();
@@ -179,13 +183,46 @@ public class InlineLayoutEngine {
                 bb.setWidth(contentWidth);
 
                 float contentHeight = bfc.layoutChildren(bb, contentWidth);
+                // Apply explicit height + min/max clamping (matches BFC block-level handling)
+                ComputedStyle ibStyle = bb.getStyle();
+                float ibFontSize = ibStyle.getFontSize(defaultFontSizePt);
+                float explicitHeight = ibStyle.getHeight(contentHeight, ibFontSize);
+                if (explicitHeight > 0) {
+                    contentHeight = Math.max(contentHeight, explicitHeight);
+                }
+                float maxH = ibStyle.getMaxHeight(contentHeight, ibFontSize);
+                float minH = ibStyle.getMinHeight(contentHeight, ibFontSize);
+                contentHeight = Math.max(minH, Math.min(contentHeight, maxH));
                 bb.setHeight(contentHeight);
 
                 float outerWidth = bb.getOuterWidth();
                 float outerHeight = bb.getOuterHeight();
                 items.add(new InlineItem(bb, outerWidth, outerHeight));
+            } else if (box instanceof BrBox br) {
+                // Resolve line-height for the break so empty lines have correct spacing
+                float brFontSize = defaultFontSizePt;
+                float brLineHeight;
+                ComputedStyle brStyle = br.getStyle();
+                if (brStyle != null) {
+                    brFontSize = brStyle.getFontSize(defaultFontSizePt);
+                    float cssLH = brStyle.getLineHeight(brFontSize);
+                    brLineHeight = cssLH > 0 ? cssLH
+                            : fontManager.getLineHeight(fontManager.getDefaultFont(), brFontSize);
+                } else {
+                    brLineHeight = fontManager.getLineHeight(fontManager.getDefaultFont(), brFontSize);
+                }
+                items.add(new InlineItem(br, 0, brLineHeight, true));
             } else if (box instanceof InlineBox) {
-                // Recurse into inline box children
+                // Propagate href from <a> InlineBox to children before recursing,
+                // since the InlineBox itself is discarded (only leaf items are surfaced)
+                String href = box.getHref();
+                if (href != null) {
+                    for (Box child : box.getChildren()) {
+                        if (child.getHref() == null) {
+                            child.setHref(href);
+                        }
+                    }
+                }
                 collectInlineItems(box.getChildren(), items, availableWidth);
             }
         }
@@ -239,6 +276,16 @@ public class InlineLayoutEngine {
         float maxLineHeight = 0;
 
         for (InlineItem item : items) {
+            // Forced break from <br>: finalize the current line immediately
+            if (item.forcedBreak) {
+                float lineHeight = maxLineHeight > 0 ? maxLineHeight : item.height;
+                lines.add(new Line(currentLine, currentWidth, lineHeight));
+                currentLine = new ArrayList<>();
+                currentWidth = 0;
+                maxLineHeight = 0;
+                continue;
+            }
+
             if (currentWidth + item.width > maxWidth && !currentLine.isEmpty()) {
                 // Wrap to next line
                 lines.add(new Line(currentLine, currentWidth, maxLineHeight));
@@ -285,6 +332,20 @@ public class InlineLayoutEngine {
         float lineMaxWidth = wa[0];
 
         for (InlineItem item : items) {
+            // Forced break from <br>: finalize the current line immediately
+            if (item.forcedBreak) {
+                float lineHeight = maxLineHeight > 0 ? maxLineHeight : item.height;
+                lines.add(new Line(currentLine, currentWidth, lineHeight));
+                cursorY += lineHeight;
+                currentLine = new ArrayList<>();
+                currentWidth = 0;
+                maxLineHeight = 0;
+
+                wa = provider.getWidthAndOffsetAtY(startY + cursorY);
+                lineMaxWidth = wa[0];
+                continue;
+            }
+
             if (currentWidth + item.width > lineMaxWidth && !currentLine.isEmpty()) {
                 float lineH = maxLineHeight;
                 lines.add(new Line(currentLine, currentWidth, lineH));
@@ -391,10 +452,18 @@ public class InlineLayoutEngine {
             String family = CssValueParser.parsePrimaryFontFamily(style.getFontFamily());
             font = fontManager.getFont(family, style.isBold(), style.isItalic());
             fontSize = style.getFontSize(defaultFontSizePt);
+
+            // Apply text-transform before measuring (must match resolveTextMetrics)
+            String transform = style.getTextTransform();
+            if ("uppercase".equals(transform)) text = text.toUpperCase();
+            else if ("lowercase".equals(transform)) text = text.toLowerCase();
+            else if ("capitalize".equals(transform)) text = capitalize(text);
         } else {
             font = fontManager.getDefaultFont();
             fontSize = defaultFontSizePt;
         }
+
+        float letterSpacing = (style != null) ? style.getLetterSpacing(fontSize) : 0;
 
         // Measure word-by-word to match inline layout's word splitting,
         // preventing floating-point mismatch between shrink-to-fit and actual layout
@@ -402,6 +471,9 @@ public class InlineLayoutEngine {
         for (String word : text.split("(?<= )")) {
             if (!word.isEmpty()) {
                 total += fontManager.measureText(word, font, fontSize);
+                if (letterSpacing != 0 && word.length() > 1) {
+                    total += letterSpacing * (word.length() - 1);
+                }
             }
         }
         return total;
@@ -418,20 +490,36 @@ public class InlineLayoutEngine {
             String family = CssValueParser.parsePrimaryFontFamily(style.getFontFamily());
             font = fontManager.getFont(family, style.isBold(), style.isItalic());
             fontSize = style.getFontSize(defaultFontSizePt);
+
+            // Apply text-transform before measuring (must match resolveTextMetrics)
+            String transform = style.getTextTransform();
+            if ("uppercase".equals(transform)) text = text.toUpperCase();
+            else if ("lowercase".equals(transform)) text = text.toLowerCase();
+            else if ("capitalize".equals(transform)) text = capitalize(text);
         } else {
             font = fontManager.getDefaultFont();
             fontSize = defaultFontSizePt;
         }
 
+        float letterSpacing = (style != null) ? style.getLetterSpacing(fontSize) : 0;
+
         float maxWidth = 0;
         for (String word : text.split("\\s+")) {
             if (!word.isEmpty()) {
-                maxWidth = Math.max(maxWidth, fontManager.measureText(word, font, fontSize));
+                float wordWidth = fontManager.measureText(word, font, fontSize);
+                if (letterSpacing != 0 && word.length() > 1) {
+                    wordWidth += letterSpacing * (word.length() - 1);
+                }
+                maxWidth = Math.max(maxWidth, wordWidth);
             }
         }
         return maxWidth;
     }
 
-    record InlineItem(Box box, float width, float height) {}
+    record InlineItem(Box box, float width, float height, boolean forcedBreak) {
+        InlineItem(Box box, float width, float height) {
+            this(box, width, height, false);
+        }
+    }
     record Line(List<InlineItem> items, float width, float height) {}
 }

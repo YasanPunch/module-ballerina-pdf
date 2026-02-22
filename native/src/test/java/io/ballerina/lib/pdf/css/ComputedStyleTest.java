@@ -126,12 +126,15 @@ class ComputedStyleTest {
         ComputedStyle style = new ComputedStyle();
 
         style.set("border-top-width", "thin");
+        style.set("border-top-style", "solid");
         assertEquals(0.75f, style.getBorderTopWidth(500f, 12f), 0.01f);
 
         style.set("border-right-width", "medium");
+        style.set("border-right-style", "solid");
         assertEquals(1.5f, style.getBorderRightWidth(500f, 12f), 0.01f);
 
         style.set("border-bottom-width", "thick");
+        style.set("border-bottom-style", "solid");
         assertEquals(2.25f, style.getBorderBottomWidth(500f, 12f), 0.01f);
     }
 
@@ -139,6 +142,7 @@ class ComputedStyleTest {
     void parseBorderWidthPixels() {
         ComputedStyle style = new ComputedStyle();
         style.set("border-left-width", "2px");
+        style.set("border-left-style", "solid");
         // 2px * 0.75 = 1.5pt
         assertEquals(1.5f, style.getBorderLeftWidth(500f, 12f), 0.01f);
     }
@@ -301,6 +305,71 @@ class ComputedStyleTest {
         assertEquals(100f, style.getBorderTopLeftRadius(200f, 12f), 0.01f);
     }
 
+    // --- Line-height ---
+
+    @Test
+    void getLineHeightNormalReturnsNegative() {
+        ComputedStyle style = new ComputedStyle();
+        // No line-height set → -1
+        assertEquals(-1f, style.getLineHeight(12f));
+
+        style.set("line-height", "normal");
+        assertEquals(-1f, style.getLineHeight(12f));
+    }
+
+    @Test
+    void getLineHeightInheritReturnsNegative() {
+        ComputedStyle style = new ComputedStyle();
+        style.set("line-height", "inherit");
+        assertEquals(-1f, style.getLineHeight(12f));
+    }
+
+    @Test
+    void getLineHeightUnitless() {
+        ComputedStyle style = new ComputedStyle();
+        style.set("line-height", "1.8");
+        // 1.8 * 10pt = 18pt
+        assertEquals(18f, style.getLineHeight(10f), 0.01f);
+    }
+
+    @Test
+    void getLineHeightPixels() {
+        ComputedStyle style = new ComputedStyle();
+        style.set("line-height", "24px");
+        // 24px * 0.75 = 18pt
+        assertEquals(18f, style.getLineHeight(12f), 0.01f);
+    }
+
+    @Test
+    void getLineHeightPercentage() {
+        ComputedStyle style = new ComputedStyle();
+        style.set("line-height", "150%");
+        // 150% of 12pt = 18pt
+        assertEquals(18f, style.getLineHeight(12f), 0.01f);
+    }
+
+    @Test
+    void getLineHeightEm() {
+        ComputedStyle style = new ComputedStyle();
+        style.set("line-height", "1.5em");
+        // 1.5 * 12pt = 18pt
+        assertEquals(18f, style.getLineHeight(12f), 0.01f);
+    }
+
+    @Test
+    void getLineHeightPt() {
+        ComputedStyle style = new ComputedStyle();
+        style.set("line-height", "18pt");
+        assertEquals(18f, style.getLineHeight(12f), 0.01f);
+    }
+
+    @Test
+    void getLineHeightInvalidReturnsNegative() {
+        ComputedStyle style = new ComputedStyle();
+        style.set("line-height", "abc");
+        assertEquals(-1f, style.getLineHeight(12f));
+    }
+
     // --- Box-shadow ---
 
     @Test
@@ -339,5 +408,53 @@ class ComputedStyleTest {
         assertEquals(3.75f, shadow.blur(), 0.01f);     // 5px * 0.75
         assertEquals(0.75f, shadow.spread(), 0.01f);   // 1px * 0.75
         assertTrue(shadow.color().contains("rgba"), "Color should be rgba, got: " + shadow.color());
+    }
+
+    @Test
+    void getBoxShadowsMultipleValues() {
+        ComputedStyle style = new ComputedStyle();
+        style.set("box-shadow", "0 0 0 2px #ffffff, 0 0 0 4px #d69e2e");
+        var shadows = style.getBoxShadows(500f, 12f);
+        assertEquals(2, shadows.size());
+
+        // First shadow: 0 0 0 2px #ffffff
+        assertEquals(0f, shadows.get(0).offsetX(), 0.01f);
+        assertEquals(0f, shadows.get(0).offsetY(), 0.01f);
+        assertEquals(0f, shadows.get(0).blur(), 0.01f);
+        assertEquals(1.5f, shadows.get(0).spread(), 0.01f);   // 2px * 0.75
+        assertEquals("#ffffff", shadows.get(0).color());
+
+        // Second shadow: 0 0 0 4px #d69e2e
+        assertEquals(0f, shadows.get(1).offsetX(), 0.01f);
+        assertEquals(0f, shadows.get(1).offsetY(), 0.01f);
+        assertEquals(0f, shadows.get(1).blur(), 0.01f);
+        assertEquals(3f, shadows.get(1).spread(), 0.01f);     // 4px * 0.75
+        assertEquals("#d69e2e", shadows.get(1).color());
+    }
+
+    @Test
+    void getBoxShadowsWithRgba() {
+        ComputedStyle style = new ComputedStyle();
+        style.set("box-shadow", "2px 3px 5px rgba(0,0,0,0.3), 0 0 10px rgba(255,0,0,0.5)");
+        var shadows = style.getBoxShadows(500f, 12f);
+        assertEquals(2, shadows.size());
+        assertTrue(shadows.get(0).color().contains("rgba"));
+        assertTrue(shadows.get(1).color().contains("rgba"));
+    }
+
+    @Test
+    void getBoxShadowsSingleValue() {
+        ComputedStyle style = new ComputedStyle();
+        style.set("box-shadow", "2px 3px 5px rgba(0,0,0,0.3)");
+        var shadows = style.getBoxShadows(500f, 12f);
+        assertEquals(1, shadows.size());
+    }
+
+    @Test
+    void getBoxShadowsNoneReturnsEmptyList() {
+        ComputedStyle style = new ComputedStyle();
+        style.set("box-shadow", "none");
+        var shadows = style.getBoxShadows(500f, 12f);
+        assertTrue(shadows.isEmpty());
     }
 }

@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Invoice #INV-2024-0847</title>
+<style>
+  body {
+    font-family: 'Liberation Sans', Arial, sans-serif;
+    font-size: 12px;
+    color: #333;
+    margin: 0;
+    padding: 30px;
+    line-height: 1.5;
+  }
+
+  /* Header with float-based two-column layout */
+  .invoice-header {
+    margin-bottom: 30px;
+  }
+
+  .invoice-header::after {
+    content: "";
+    display: block;
+    clear: both;
+  }
+
+  .company-info {
+    float: left;
+    width: 55%;
+  }
+
+  .company-name {
+    font-size: 24px;
+    font-weight: bold;
+    color: #2d3748;
+    margin-bottom: 3px;
+  }
+
+  .company-details {
+    font-size: 11px;
+    color: #718096;
+    line-height: 1.6;
+  }
+
+  .invoice-meta {
+    float: right;
+    width: 40%;
+    text-align: right;
+  }
+
+  .invoice-title {
+    font-size: 32px;
+    font-weight: bold;
+    color: #4299e1;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+  }
+
+  .invoice-meta-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .invoice-meta-table td {
+    padding: 3px 0;
+    font-size: 11px;
+  }
+
+  .invoice-meta-table td:first-child {
+    color: #a0aec0;
+    text-align: right;
+    padding-right: 10px;
+    font-weight: bold;
+    text-transform: uppercase;
+    font-size: 10px;
+  }
+
+  .invoice-meta-table td:last-child {
+    text-align: right;
+    color: #2d3748;
+  }
+
+  /* Divider line */
+  .divider {
+    border: none;
+    border-top: 2px solid #4299e1;
+    margin: 20px 0;
+  }
+
+  .divider-thin {
+    border: none;
+    border-top: 1px solid #e2e8f0;
+    margin: 15px 0;
+  }
+
+  /* Bill to / Ship to sections */
+  .addresses {
+    margin-bottom: 25px;
+  }
+
+  .addresses::after {
+    content: "";
+    display: block;
+    clear: both;
+  }
+
+  .bill-to, .ship-to {
+    float: left;
+    width: 45%;
+  }
+
+  .ship-to {
+    float: right;
+  }
+
+  .address-label {
+    font-size: 10px;
+    font-weight: bold;
+    color: #a0aec0;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 5px;
+  }
+
+  .address-name {
+    font-size: 14px;
+    font-weight: bold;
+    color: #2d3748;
+    margin-bottom: 3px;
+  }
+
+  .address-line {
+    font-size: 11px;
+    color: #4a5568;
+    line-height: 1.6;
+  }
+
+  /* Logo placeholder using base64 colored box */
+  .logo {
+    margin-bottom: 10px;
+  }
+
+  .logo img {
+    max-width: 120px;
+  }
+
+  /* Line items table */
+  .items-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 25px;
+  }
+
+  .items-table thead th {
+    background-color: #4299e1;
+    color: white;
+    padding: 10px 12px;
+    text-align: left;
+    font-size: 11px;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .items-table thead th:nth-child(3),
+  .items-table thead th:nth-child(4),
+  .items-table thead th:nth-child(5) {
+    text-align: right;
+  }
+
+  .items-table tbody td {
+    padding: 10px 12px;
+    border-bottom: 1px solid #edf2f7;
+    vertical-align: top;
+  }
+
+  .items-table tbody td:nth-child(3),
+  .items-table tbody td:nth-child(4),
+  .items-table tbody td:nth-child(5) {
+    text-align: right;
+    font-family: 'Liberation Sans', monospace;
+  }
+
+  .items-table tbody tr:nth-child(even) {
+    background-color: #f7fafc;
+  }
+
+  .item-name {
+    font-weight: bold;
+    color: #2d3748;
+  }
+
+  .item-desc {
+    font-size: 10px;
+    color: #718096;
+    margin-top: 2px;
+  }
+
+  .item-code {
+    font-size: 10px;
+    color: #a0aec0;
+    font-family: 'Liberation Sans', monospace;
+  }
+
+  /* Totals section - positioned right */
+  .totals-section {
+    float: right;
+    width: 300px;
+    margin-bottom: 30px;
+  }
+
+  .totals-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .totals-table td {
+    padding: 6px 12px;
+  }
+
+  .totals-table td:first-child {
+    text-align: right;
+    color: #718096;
+    font-size: 11px;
+  }
+
+  .totals-table td:last-child {
+    text-align: right;
+    font-family: 'Liberation Sans', monospace;
+    font-size: 12px;
+    color: #2d3748;
+  }
+
+  .totals-table .discount td {
+    color: #e53e3e;
+  }
+
+  .totals-table .grand-total td {
+    font-size: 16px;
+    font-weight: bold;
+    border-top: 2px solid #4299e1;
+    padding-top: 10px;
+    color: #2d3748;
+  }
+
+  .totals-table .grand-total td:last-child {
+    color: #4299e1;
+    font-size: 18px;
+  }
+
+  /* Notes and terms */
+  .clear {
+    clear: both;
+  }
+
+  .notes-section {
+    margin-top: 20px;
+    padding: 15px;
+    background-color: #f7fafc;
+    border: 1px solid #e2e8f0;
+  }
+
+  .notes-section h4 {
+    font-size: 12px;
+    color: #2d3748;
+    margin-bottom: 8px;
+    margin-top: 0;
+  }
+
+  .notes-section p {
+    font-size: 10px;
+    color: #718096;
+    margin: 3px 0;
+    line-height: 1.6;
+  }
+
+  /* Payment info */
+  .payment-info {
+    margin-top: 20px;
+    padding: 15px;
+    border: 1px solid #bee3f8;
+    background-color: #ebf8ff;
+  }
+
+  .payment-info h4 {
+    color: #2b6cb0;
+    margin-top: 0;
+    margin-bottom: 8px;
+    font-size: 12px;
+  }
+
+  .payment-grid {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .payment-grid td {
+    padding: 3px 0;
+    font-size: 11px;
+  }
+
+  .payment-grid td:first-child {
+    font-weight: bold;
+    color: #4a5568;
+    width: 140px;
+  }
+
+  .payment-grid td:last-child {
+    color: #2d3748;
+  }
+
+  /* Footer */
+  .invoice-footer {
+    margin-top: 30px;
+    text-align: center;
+    font-size: 10px;
+    color: #a0aec0;
+    border-top: 1px solid #e2e8f0;
+    padding-top: 15px;
+  }
+
+  /* Status badge */
+  .status-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    background-color: #fefcbf;
+    color: #975a16;
+    border: 1px solid #f6e05e;
+    font-size: 10px;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+</style>
+</head>
+<body>
+
+<div class="invoice-header">
+  <div class="company-info">
+    <div class="logo">
+      <!-- Small colored block as logo placeholder (base64 blue gradient-like block) -->
+      <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAFoAAAAyCAIAAABMpCihAAAASklEQVR4nO3QMQEAAAjDMKh/p2G4yxZg4HdPA8auA4axA8auA4axA8auA4axA8auA4axA8auA4axA8auA4axA8auA4axA8auA4axA5eeBT7NN58fAAAAAElFTkSuQmCC" width="90" height="50" />
+    </div>
+    <div class="company-name">Nexus Digital Solutions</div>
+    <div class="company-details">
+      742 Innovation Drive, Suite 300<br />
+      San Francisco, CA 94107, United States<br />
+      Phone: +1 (415) 555-0192<br />
+      Email: billing@nexusdigital.io<br />
+      Tax ID: US-84-2947301
+    </div>
+  </div>
+
+  <div class="invoice-meta">
+    <div class="invoice-title">Invoice</div>
+    <table class="invoice-meta-table">
+      <tr>
+        <td>Invoice No.</td>
+        <td>INV-2024-0847</td>
+      </tr>
+      <tr>
+        <td>Date</td>
+        <td>November 15, 2024</td>
+      </tr>
+      <tr>
+        <td>Due Date</td>
+        <td>December 15, 2024</td>
+      </tr>
+      <tr>
+        <td>PO Number</td>
+        <td>PO-78234</td>
+      </tr>
+      <tr>
+        <td>Status</td>
+        <td><span class="status-badge">Pending</span></td>
+      </tr>
+    </table>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<div class="addresses">
+  <div class="bill-to">
+    <div class="address-label">Bill To</div>
+    <div class="address-name">Stratton Manufacturing Corp.</div>
+    <div class="address-line">
+      Attn: Accounts Payable<br />
+      1200 Industrial Parkway<br />
+      Building C, 4th Floor<br />
+      Detroit, MI 48226<br />
+      United States
+    </div>
+  </div>
+
+  <div class="ship-to">
+    <div class="address-label">Ship To</div>
+    <div class="address-name">Stratton Manufacturing — West Campus</div>
+    <div class="address-line">
+      Attn: IT Department<br />
+      8900 Westside Boulevard<br />
+      Suite 450<br />
+      Portland, OR 97209<br />
+      United States
+    </div>
+  </div>
+</div>
+
+<div class="divider-thin"></div>
+
+<!-- Line Items -->
+<table class="items-table">
+  <thead>
+    <tr>
+      <th style="width: 8%;">#</th>
+      <th style="width: 47%;">Description</th>
+      <th style="width: 12%;">Qty</th>
+      <th style="width: 15%;">Unit Price</th>
+      <th style="width: 18%;">Amount</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>1</td>
+      <td>
+        <div class="item-name">Enterprise Cloud Platform — Annual License</div>
+        <div class="item-desc">Full-featured cloud management platform with 24/7 support, unlimited users, and dedicated account manager</div>
+        <div class="item-code">SKU: ECP-ENT-2024</div>
+      </td>
+      <td>1</td>
+      <td>$48,000.00</td>
+      <td>$48,000.00</td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td>
+        <div class="item-name">Data Analytics Module — Pro Tier</div>
+        <div class="item-desc">Advanced analytics with real-time dashboards, custom reporting, and ML-powered insights</div>
+        <div class="item-code">SKU: DAM-PRO-2024</div>
+      </td>
+      <td>3</td>
+      <td>$12,500.00</td>
+      <td>$37,500.00</td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td>
+        <div class="item-name">Security Compliance Toolkit</div>
+        <div class="item-desc">SOC 2, HIPAA, and GDPR compliance monitoring with automated audit reports</div>
+        <div class="item-code">SKU: SCT-STD-2024</div>
+      </td>
+      <td>1</td>
+      <td>$18,750.00</td>
+      <td>$18,750.00</td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td>
+        <div class="item-name">Professional Services — Implementation</div>
+        <div class="item-desc">On-site implementation, data migration, and system integration (estimated 120 hours)</div>
+        <div class="item-code">SKU: PS-IMPL-HR</div>
+      </td>
+      <td>120</td>
+      <td>$225.00</td>
+      <td>$27,000.00</td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td>
+        <div class="item-name">Training — Virtual Instructor-Led</div>
+        <div class="item-desc">8 sessions of 4 hours each, covering platform administration and end-user workflows</div>
+        <div class="item-code">SKU: TRN-VILT-8</div>
+      </td>
+      <td>8</td>
+      <td>$1,200.00</td>
+      <td>$9,600.00</td>
+    </tr>
+    <tr>
+      <td>6</td>
+      <td>
+        <div class="item-name">Premium Support Upgrade — 24/7 Phone</div>
+        <div class="item-desc">Upgrade from standard support to premium 24/7 phone support with 1-hour SLA for P1 issues</div>
+        <div class="item-code">SKU: SUP-PRM-24</div>
+      </td>
+      <td>1</td>
+      <td>$8,400.00</td>
+      <td>$8,400.00</td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- Totals -->
+<div class="totals-section">
+  <table class="totals-table">
+    <tr>
+      <td>Subtotal</td>
+      <td>$149,250.00</td>
+    </tr>
+    <tr class="discount">
+      <td>Volume Discount (5%)</td>
+      <td>-$7,462.50</td>
+    </tr>
+    <tr>
+      <td>Adjusted Subtotal</td>
+      <td>$141,787.50</td>
+    </tr>
+    <tr>
+      <td>Sales Tax (8.625%)</td>
+      <td>$12,229.17</td>
+    </tr>
+    <tr class="grand-total">
+      <td>Total Due</td>
+      <td>$154,016.67</td>
+    </tr>
+  </table>
+</div>
+
+<div class="clear"></div>
+
+<!-- Payment Information -->
+<div class="payment-info">
+  <h4>Payment Information</h4>
+  <table class="payment-grid">
+    <tr>
+      <td>Bank Name</td>
+      <td>Silicon Valley National Bank</td>
+    </tr>
+    <tr>
+      <td>Account Name</td>
+      <td>Nexus Digital Solutions Inc.</td>
+    </tr>
+    <tr>
+      <td>Account Number</td>
+      <td>****7834</td>
+    </tr>
+    <tr>
+      <td>Routing Number</td>
+      <td>121-042-882</td>
+    </tr>
+    <tr>
+      <td>SWIFT Code</td>
+      <td>SVNBUS6S</td>
+    </tr>
+    <tr>
+      <td>Payment Reference</td>
+      <td>INV-2024-0847</td>
+    </tr>
+  </table>
+</div>
+
+<!-- Notes and Terms -->
+<div class="notes-section">
+  <h4>Terms &amp; Conditions</h4>
+  <p>1. Payment is due within 30 days of invoice date. Late payments are subject to a 1.5% monthly interest charge.</p>
+  <p>2. Software licenses are non-transferable and subject to the Master Service Agreement dated March 12, 2024.</p>
+  <p>3. Professional services hours are estimates. Actual hours will be billed at the agreed rate. Unused hours are non-refundable.</p>
+  <p>4. All prices are in USD. Wire transfer fees, if any, are the responsibility of the paying party.</p>
+  <p>5. For billing inquiries, please contact billing@nexusdigital.io or call +1 (415) 555-0192 ext. 3.</p>
+</div>
+
+<div class="invoice-footer">
+  <p>Thank you for your business. We appreciate your partnership.</p>
+  <p>Nexus Digital Solutions Inc. | 742 Innovation Drive, Suite 300, San Francisco, CA 94107 | www.nexusdigital.io</p>
+</div>
+
+</body>
+</html>

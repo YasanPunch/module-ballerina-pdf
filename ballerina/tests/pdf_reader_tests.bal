@@ -90,6 +90,24 @@ function testToImagesInvalidFile() {
     test:assertTrue(result is ReadError, "Expected ReadError for invalid file");
 }
 
+@test:Config {}
+function testExtractTextEmptyInput() {
+    string[]|Error result = extractText([]);
+    test:assertTrue(result is ReadError, "Expected ReadError for empty byte array");
+}
+
+@test:Config {}
+function testExtractTextWrongFileExtension() {
+    string[]|Error result = extractTextFromFile("test.txt");
+    test:assertTrue(result is ReadError, "Expected ReadError for non-PDF file extension");
+}
+
+@test:Config {}
+function testInvalidUrlRejectsGracefully() {
+    string[]|Error result = extractTextFromUrl("not a valid url");
+    test:assertTrue(result is ReadError, "Expected ReadError for invalid URL");
+}
+
 // --- Round-trip tests ---
 
 @test:Config {}

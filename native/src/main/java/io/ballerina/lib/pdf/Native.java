@@ -37,6 +37,7 @@ public final class Native {
             String pageSize = getString(options, "pageSize", "A4");
             boolean preprocess = getBoolean(options, "preprocess", true);
             String additionalCss = getNullableString(options, "additionalCss");
+            int maxPages = getInt(options, "maxPages", 0);
 
             // Read custom fonts from nested map
             Map<String, byte[]> customFonts = null;
@@ -75,7 +76,7 @@ public final class Native {
             ConverterOptions opts = new ConverterOptions(
                     fontSize, dims[0], dims[1],
                     marginTop, marginRight, marginBottom, marginLeft,
-                    additionalCss, preprocess, customFonts);
+                    additionalCss, preprocess, customFonts, maxPages);
 
             // Phase 1: Preprocess HTML
             HtmlPreprocessor preprocessor = new HtmlPreprocessor();
@@ -171,6 +172,14 @@ public final class Native {
     }
 
     // --- BMap helper methods ---
+
+    private static int getInt(BMap<BString, Object> map, String key, int defaultValue) {
+        Object value = map.get(StringUtils.fromString(key));
+        if (value instanceof Number num) {
+            return num.intValue();
+        }
+        return defaultValue;
+    }
 
     private static float getFloat(BMap<BString, Object> map, String key, float defaultValue) {
         Object value = map.get(StringUtils.fromString(key));

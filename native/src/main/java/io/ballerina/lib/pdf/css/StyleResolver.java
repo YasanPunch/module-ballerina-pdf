@@ -8,6 +8,8 @@ import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static java.util.regex.Pattern.CASE_INSENSITIVE;
+
 /**
  * Resolves CSS styles for DOM elements using the cascade:
  * 1. Match stylesheet rules by selector
@@ -50,13 +52,23 @@ public class StyleResolver {
             Map.entry("meta", "none"), Map.entry("link", "none"), Map.entry("title", "none")
     );
 
-    // Default styles for HTML elements (UA stylesheet)
+    // Default styles for HTML elements (UA stylesheet, per CSS 2.1 Appendix D)
     private static final Map<String, Map<String, String>> UA_STYLES = Map.ofEntries(
             Map.entry("h1", Map.of("font-size", "24px", "font-weight", "bold", "margin-top", "16px", "margin-bottom", "16px")),
             Map.entry("h2", Map.of("font-size", "20px", "font-weight", "bold", "margin-top", "14px", "margin-bottom", "14px")),
             Map.entry("h3", Map.of("font-size", "16px", "font-weight", "bold", "margin-top", "12px", "margin-bottom", "12px")),
             Map.entry("h4", Map.of("font-size", "14px", "font-weight", "bold", "margin-top", "10px", "margin-bottom", "10px")),
+            Map.entry("h5", Map.of("font-size", "12px", "font-weight", "bold", "margin-top", "10px", "margin-bottom", "10px")),
+            Map.entry("h6", Map.of("font-size", "10px", "font-weight", "bold", "margin-top", "10px", "margin-bottom", "10px")),
             Map.entry("p", Map.of("margin-top", "8px", "margin-bottom", "8px")),
+            Map.entry("hr", Map.of("border-top-width", "1px", "border-top-style", "solid",
+                    "border-top-color", "#808080", "margin-top", "8px", "margin-bottom", "8px")),
+            Map.entry("ul", Map.of("margin-top", "8px", "margin-bottom", "8px", "padding-left", "30px")),
+            Map.entry("ol", Map.of("margin-top", "8px", "margin-bottom", "8px", "padding-left", "30px")),
+            Map.entry("blockquote", Map.of("margin-top", "8px", "margin-bottom", "8px",
+                    "margin-left", "30px", "margin-right", "30px")),
+            Map.entry("pre", Map.of("margin-top", "8px", "margin-bottom", "8px",
+                    "font-family", "monospace", "white-space", "pre")),
             Map.entry("strong", Map.of("font-weight", "bold")),
             Map.entry("b", Map.of("font-weight", "bold")),
             Map.entry("em", Map.of("font-style", "italic")),
@@ -211,18 +223,35 @@ public class StyleResolver {
         }
     }
 
+    // Matches parenthesized CSS color functions (rgb, rgba, hsl, hsla) that contain spaces
+    private static final Pattern PAREN_COLOR = Pattern.compile(
+            "(?:rgba?|hsla?)\\s*\\([^)]+\\)", CASE_INSENSITIVE);
+
     private void expandBorderSide(ComputedStyle style, String side, String value) {
         // border shorthand: [width] [style] [color]
-        String[] parts = value.trim().split("\\s+");
+        // Color functions like rgb(183, 121, 31) contain spaces, so extract them first
+        String v = value.trim();
+        String color = null;
+
+        Matcher m = PAREN_COLOR.matcher(v);
+        if (m.find()) {
+            color = m.group();
+            v = (v.substring(0, m.start()) + " " + v.substring(m.end())).trim();
+        }
+
+        String[] parts = v.split("\\s+");
         for (String part : parts) {
+            if (part.isEmpty()) continue;
             if (isBorderWidth(part)) {
                 style.set("border-" + side + "-width", part);
             } else if (isBorderStyle(part)) {
                 style.set("border-" + side + "-style", part);
-            } else {
-                // Assume it's a color
-                style.set("border-" + side + "-color", part);
+            } else if (color == null) {
+                color = part; // hex or named color
             }
+        }
+        if (color != null) {
+            style.set("border-" + side + "-color", color);
         }
     }
 
@@ -257,18 +286,51 @@ public class StyleResolver {
     }
 
     private void expandFourSidedBorderColor(ComputedStyle style, String value) {
-        String[] parts = value.trim().split("\\s+");
+        // Color values may contain spaces (e.g. "rgb(1, 2, 3) rgb(4, 5, 6)"),
+        // so split on top-level whitespace outside parentheses
+        List<String> colors = splitColorValues(value.trim());
         String top, right, bottom, left;
-        switch (parts.length) {
-            case 1 -> { top = right = bottom = left = parts[0]; }
-            case 2 -> { top = bottom = parts[0]; right = left = parts[1]; }
-            case 3 -> { top = parts[0]; right = left = parts[1]; bottom = parts[2]; }
-            default -> { top = parts[0]; right = parts[1]; bottom = parts[2]; left = parts[3]; }
+        switch (colors.size()) {
+            case 1 -> { top = right = bottom = left = colors.get(0); }
+            case 2 -> { top = bottom = colors.get(0); right = left = colors.get(1); }
+            case 3 -> { top = colors.get(0); right = left = colors.get(1); bottom = colors.get(2); }
+            default -> { top = colors.get(0); right = colors.get(1); bottom = colors.get(2); left = colors.get(3); }
         }
         style.set("border-top-color", top);
         style.set("border-right-color", right);
         style.set("border-bottom-color", bottom);
         style.set("border-left-color", left);
+    }
+
+    /**
+     * Splits a CSS value containing multiple color tokens, respecting parentheses.
+     * E.g. "rgb(1, 2, 3) #fff" → ["rgb(1, 2, 3)", "#fff"]
+     */
+    private List<String> splitColorValues(String value) {
+        List<String> result = new ArrayList<>();
+        StringBuilder current = new StringBuilder();
+        int depth = 0;
+        for (int i = 0; i < value.length(); i++) {
+            char c = value.charAt(i);
+            if (c == '(') {
+                depth++;
+                current.append(c);
+            } else if (c == ')') {
+                depth--;
+                current.append(c);
+            } else if ((c == ' ' || c == '\t') && depth == 0) {
+                if (current.length() > 0) {
+                    result.add(current.toString());
+                    current = new StringBuilder();
+                }
+            } else {
+                current.append(c);
+            }
+        }
+        if (current.length() > 0) {
+            result.add(current.toString());
+        }
+        return result;
     }
 
     private void expandBorderRadius(ComputedStyle style, String value) {
@@ -415,11 +477,17 @@ public class StyleResolver {
         }
 
         // align attribute — only map to text-align for elements where it means text alignment.
-        // On <table> and <img>, align means positioning (float), not text alignment.
+        // On <table>, align="center" maps to auto margins (CSS centering).
+        // On <img>, align means float positioning.
         String align = DomUtils.attr(element, "align");
-        if (align != null && style.get("text-align") == null
-                && !tagName.equals("table") && !tagName.equals("img")) {
-            style.set("text-align", align.toLowerCase());
+        if (align != null) {
+            if ("center".equalsIgnoreCase(align) && tagName.equals("table")) {
+                if (style.get("margin-left") == null) style.set("margin-left", "auto");
+                if (style.get("margin-right") == null) style.set("margin-right", "auto");
+            } else if (!tagName.equals("table") && !tagName.equals("img")
+                    && style.get("text-align") == null) {
+                style.set("text-align", align.toLowerCase());
+            }
         }
 
         // cellpadding on tables (applied to cells during box tree building)

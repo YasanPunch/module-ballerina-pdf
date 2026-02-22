@@ -4,14 +4,25 @@ import io.ballerina.lib.pdf.box.*;
 import io.ballerina.lib.pdf.css.ComputedStyle;
 import io.ballerina.lib.pdf.layout.LayoutContext;
 import io.ballerina.lib.pdf.layout.PageBreaker;
+import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
+import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.font.PDFont;
 import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
 import org.apache.pdfbox.pdmodel.graphics.state.PDExtendedGraphicsState;
+import org.apache.pdfbox.pdmodel.interactive.action.PDActionGoTo;
+import org.apache.pdfbox.pdmodel.interactive.action.PDActionURI;
+import org.apache.pdfbox.pdmodel.interactive.annotation.PDAnnotationLink;
+import org.apache.pdfbox.pdmodel.interactive.annotation.PDBorderStyleDictionary;
+import org.apache.pdfbox.pdmodel.interactive.documentnavigation.destination.PDPageXYZDestination;
+import org.apache.pdfbox.util.Matrix;
 
 import java.awt.Color;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Traverses the laid-out box tree and emits PDFBox drawing commands.
@@ -19,10 +30,14 @@ import java.util.List;
  */
 public class PdfPainter {
 
+    private record PendingInternalLink(int sourcePageIndex, PDRectangle rect, String targetId) {}
+
     private final PdfPageManager pageManager;
     private final ImageDecoder imageDecoder;
     private final FontManager fontManager;
     private final LayoutContext layoutContext;
+    private final List<PendingInternalLink> pendingInternalLinks = new ArrayList<>();
+    private Map<String, float[]> anchorMap = Collections.emptyMap();
 
     public PdfPainter(PdfPageManager pageManager, ImageDecoder imageDecoder,
                       FontManager fontManager, LayoutContext layoutContext) {
@@ -32,13 +47,34 @@ public class PdfPainter {
         this.layoutContext = layoutContext;
     }
 
+    /** Sets the anchor map for resolving internal links (href="#id"). */
+    public void setAnchorMap(Map<String, float[]> anchorMap) {
+        this.anchorMap = anchorMap;
+    }
+
     /**
-     * Paints the entire box tree across pages.
+     * Paints the entire box tree across pages (no scaling).
      */
     public void paint(Box root, List<PageBreaker.PageSlice> pages) throws IOException {
+        paint(root, pages, 1.0f);
+    }
+
+    /**
+     * Paints the entire box tree across pages, applying CTM scaling if scale < 1.
+     */
+    public void paint(Box root, List<PageBreaker.PageSlice> pages, float scale) throws IOException {
         for (int pageIdx = 0; pageIdx < pages.size(); pageIdx++) {
             PageBreaker.PageSlice slice = pages.get(pageIdx);
             PDPageContentStream stream = pageManager.newPage();
+
+            // Apply CTM scale transform to fit content into fewer pages
+            if (scale < 1.0f) {
+                // Scale around horizontal center to preserve centering, and top edge vertically
+                float cx = layoutContext.getMarginLeft() + layoutContext.getContentWidth() / 2f;
+                float oy = layoutContext.getPageHeight() - layoutContext.getMarginTop();
+                Matrix m = new Matrix(scale, 0, 0, scale, cx * (1 - scale), oy * (1 - scale));
+                stream.transform(m);
+            }
 
             // Paint all boxes, offsetting by the page slice's startY
             paintBox(root, stream, 0, 0, slice.startY(), slice.endY());
@@ -96,9 +132,44 @@ public class PdfPainter {
                     contentY - clipTop);
         }
 
+        // Create link annotation for boxes with href (from <a> tags)
+        if (box.getHref() != null && !box.getHref().isEmpty()) {
+            createLinkAnnotation(box, pdfX, absY - clipTop, borderBoxW, borderBoxH);
+        }
+
+        // Clip children to border-radius boundary per CSS Overflow Module Level 3 §3.1.2:
+        // only when overflow is hidden/scroll/auto/clip (not when overflow: visible, the default)
+        boolean hasClip = false;
+        ComputedStyle clipStyle = box.getStyle();
+        if (clipStyle != null) {
+            String overflow = clipStyle.get("overflow");
+            boolean overflowClips = overflow != null
+                    && (overflow.equals("hidden") || overflow.equals("scroll")
+                    || overflow.equals("auto") || overflow.equals("clip"));
+            if (overflowClips) {
+                float clipFontSize = clipStyle.getFontSize(layoutContext.getDefaultFontSizePt());
+                float tlr = clipStyle.getBorderTopLeftRadius(borderBoxW, clipFontSize);
+                float trr = clipStyle.getBorderTopRightRadius(borderBoxW, clipFontSize);
+                float brr = clipStyle.getBorderBottomRightRadius(borderBoxW, clipFontSize);
+                float blr = clipStyle.getBorderBottomLeftRadius(borderBoxW, clipFontSize);
+                hasClip = tlr > 0 || trr > 0 || brr > 0 || blr > 0;
+                if (hasClip) {
+                    float clipPdfY = toPdfY(absY - clipTop, borderBoxH);
+                    stream.saveGraphicsState();
+                    addRoundedRectPath(stream, pdfX, clipPdfY, borderBoxW, borderBoxH,
+                            tlr, trr, brr, blr);
+                    stream.clip();
+                }
+            }
+        }
+
         // Recurse into children (use effectiveChildren to pick up inline layout results)
         for (Box child : box.getEffectiveChildren()) {
             paintBox(child, stream, contentX, contentY, clipTop, clipBottom);
+        }
+
+        if (hasClip) {
+            stream.restoreGraphicsState();
         }
     }
 
@@ -156,13 +227,9 @@ public class PdfPainter {
         if (style == null) return;
 
         float fontSize = style.getFontSize(layoutContext.getDefaultFontSizePt());
-        ComputedStyle.BoxShadow shadow = style.getBoxShadow(width, fontSize);
-        if (shadow == null) return;
+        java.util.List<ComputedStyle.BoxShadow> shadows = style.getBoxShadows(width, fontSize);
+        if (shadows.isEmpty()) return;
 
-        Color shadowColor = ColorParser.parse(shadow.color());
-        if (shadowColor == null) shadowColor = new Color(0, 0, 0, 128);
-
-        float baseAlpha = (shadowColor.getAlpha() / 255f) * style.getOpacity();
         float pdfY = toPdfY(layoutY, height);
 
         // Resolve border-radius for shadow shape
@@ -172,32 +239,64 @@ public class PdfPainter {
         float blr = style.getBorderBottomLeftRadius(width, fontSize);
         boolean hasRadius = tlr > 0 || trr > 0 || brr > 0 || blr > 0;
 
-        // Approximate blur with concentric layers
-        int layers = shadow.blur() > 0 ? 4 : 1;
-        float blurStep = shadow.blur() / layers;
+        // CSS spec: first shadow in the list is painted on top, so paint in reverse order
+        for (int si = shadows.size() - 1; si >= 0; si--) {
+            ComputedStyle.BoxShadow shadow = shadows.get(si);
+            Color shadowColor = ColorParser.parse(shadow.color());
+            if (shadowColor == null) shadowColor = new Color(0, 0, 0, 128);
 
-        for (int i = layers; i >= 1; i--) {
-            float expand = shadow.spread() + (blurStep * i);
-            float layerAlpha = baseAlpha * ((float) (layers - i + 1) / (layers + 1));
+            float baseAlpha = (shadowColor.getAlpha() / 255f) * style.getOpacity();
 
-            float sx = pdfX + shadow.offsetX() - expand;
-            float sy = pdfY - shadow.offsetY() - expand;
-            float sw = width + expand * 2;
-            float sh = height + expand * 2;
+            if (shadow.blur() <= 0) {
+                // No blur — single crisp layer at full opacity
+                float expand = shadow.spread();
+                float sx = pdfX + shadow.offsetX() - expand;
+                float sy = pdfY - shadow.offsetY() - expand;
+                float sw = width + expand * 2;
+                float sh = height + expand * 2;
 
-            stream.saveGraphicsState();
-            applyAlpha(stream, layerAlpha, false);
-            stream.setNonStrokingColor(shadowColor.getRed() / 255f,
-                    shadowColor.getGreen() / 255f, shadowColor.getBlue() / 255f);
+                stream.saveGraphicsState();
+                applyAlpha(stream, baseAlpha, false);
+                stream.setNonStrokingColor(shadowColor.getRed() / 255f,
+                        shadowColor.getGreen() / 255f, shadowColor.getBlue() / 255f);
 
-            if (hasRadius) {
-                addRoundedRectPath(stream, sx, sy, sw, sh,
-                        tlr + expand, trr + expand, brr + expand, blr + expand);
+                if (hasRadius) {
+                    addRoundedRectPath(stream, sx, sy, sw, sh,
+                            tlr + expand, trr + expand, brr + expand, blr + expand);
+                } else {
+                    stream.addRect(sx, sy, sw, sh);
+                }
+                stream.fill();
+                stream.restoreGraphicsState();
             } else {
-                stream.addRect(sx, sy, sw, sh);
+                // Approximate blur with concentric layers
+                int layers = 4;
+                float blurStep = shadow.blur() / layers;
+
+                for (int i = layers; i >= 1; i--) {
+                    float expand = shadow.spread() + (blurStep * i);
+                    float layerAlpha = baseAlpha * ((float) (layers - i + 1) / (layers + 1));
+
+                    float sx = pdfX + shadow.offsetX() - expand;
+                    float sy = pdfY - shadow.offsetY() - expand;
+                    float sw = width + expand * 2;
+                    float sh = height + expand * 2;
+
+                    stream.saveGraphicsState();
+                    applyAlpha(stream, layerAlpha, false);
+                    stream.setNonStrokingColor(shadowColor.getRed() / 255f,
+                            shadowColor.getGreen() / 255f, shadowColor.getBlue() / 255f);
+
+                    if (hasRadius) {
+                        addRoundedRectPath(stream, sx, sy, sw, sh,
+                                tlr + expand, trr + expand, brr + expand, blr + expand);
+                    } else {
+                        stream.addRect(sx, sy, sw, sh);
+                    }
+                    stream.fill();
+                    stream.restoreGraphicsState();
+                }
             }
-            stream.fill();
-            stream.restoreGraphicsState();
         }
     }
 
@@ -248,50 +347,57 @@ public class PdfPainter {
 
         // Standard per-side border drawing (no radius)
 
-        // Top border
+        // Top border — inset by half width so stroke stays within border box
         if (box.getBorderTopWidth() > 0 && !isNoneBorderStyle(style.getBorderTopStyle())) {
             Color color = ColorParser.parse(style.getBorderTopColor());
             if (color == null) color = Color.BLACK;
             float alpha = (color.getAlpha() / 255f) * opacity;
             if (alpha < 1.0f) { stream.saveGraphicsState(); applyAlpha(stream, alpha, true); }
-            drawLine(stream, pdfX, pdfY + height, pdfX + width, pdfY + height,
+            float topY = pdfY + height - (box.getBorderTopWidth() / 2f);
+            drawLine(stream, pdfX, topY, pdfX + width, topY,
                     box.getBorderTopWidth(), color);
             if (alpha < 1.0f) stream.restoreGraphicsState();
         }
 
-        // Bottom border
+        // Bottom border — inset by half width
         if (box.getBorderBottomWidth() > 0 && !isNoneBorderStyle(style.getBorderBottomStyle())) {
             Color color = ColorParser.parse(style.getBorderBottomColor());
             if (color == null) color = Color.BLACK;
             float alpha = (color.getAlpha() / 255f) * opacity;
             if (alpha < 1.0f) { stream.saveGraphicsState(); applyAlpha(stream, alpha, true); }
-            drawLine(stream, pdfX, pdfY, pdfX + width, pdfY,
+            float bottomY = pdfY + (box.getBorderBottomWidth() / 2f);
+            drawLine(stream, pdfX, bottomY, pdfX + width, bottomY,
                     box.getBorderBottomWidth(), color);
             if (alpha < 1.0f) stream.restoreGraphicsState();
         }
 
-        // Left border
+        // Left border — inset by half width
         if (box.getBorderLeftWidth() > 0 && !isNoneBorderStyle(style.getBorderLeftStyle())) {
             Color color = ColorParser.parse(style.getBorderLeftColor());
             if (color == null) color = Color.BLACK;
             float alpha = (color.getAlpha() / 255f) * opacity;
             if (alpha < 1.0f) { stream.saveGraphicsState(); applyAlpha(stream, alpha, true); }
-            drawLine(stream, pdfX, pdfY, pdfX, pdfY + height,
+            float leftX = pdfX + (box.getBorderLeftWidth() / 2f);
+            drawLine(stream, leftX, pdfY, leftX, pdfY + height,
                     box.getBorderLeftWidth(), color);
             if (alpha < 1.0f) stream.restoreGraphicsState();
         }
 
-        // Right border
+        // Right border — inset by half width
         if (box.getBorderRightWidth() > 0 && !isNoneBorderStyle(style.getBorderRightStyle())) {
             Color color = ColorParser.parse(style.getBorderRightColor());
             if (color == null) color = Color.BLACK;
             float alpha = (color.getAlpha() / 255f) * opacity;
             if (alpha < 1.0f) { stream.saveGraphicsState(); applyAlpha(stream, alpha, true); }
-            drawLine(stream, pdfX + width, pdfY, pdfX + width, pdfY + height,
+            float rightX = pdfX + width - (box.getBorderRightWidth() / 2f);
+            drawLine(stream, rightX, pdfY, rightX, pdfY + height,
                     box.getBorderRightWidth(), color);
             if (alpha < 1.0f) stream.restoreGraphicsState();
         }
     }
+
+    /** A contiguous run of text that can be rendered with a single font. */
+    private record TextSegment(String text, PDFont font) {}
 
     private void paintText(TextRun textRun, PDPageContentStream stream,
                             float pdfX, float layoutY) throws IOException {
@@ -305,9 +411,9 @@ public class PdfPainter {
         }
         if (fontSize <= 0) fontSize = layoutContext.getDefaultFontSizePt();
 
-        // Sanitize text for PDFBox (remove characters the font can't encode)
-        text = sanitizeText(text, font);
-        if (text.isEmpty()) return;
+        // Resolve text into segments, each using a font that can encode its characters
+        List<TextSegment> segments = resolveTextSegments(text, font);
+        if (segments.isEmpty()) return;
 
         // Text color
         ComputedStyle style = textRun.getStyle();
@@ -347,16 +453,21 @@ public class PdfPainter {
             applyAlpha(stream, textAlpha, false);
         }
 
-        stream.beginText();
-        stream.setFont(font, fontSize);
-        stream.setNonStrokingColor(textColor.getRed() / 255f, textColor.getGreen() / 255f, textColor.getBlue() / 255f);
-        if (letterSpacing != 0) stream.setCharacterSpacing(letterSpacing);
-        if (wordSpacing != 0) stream.setWordSpacing(wordSpacing);
-        stream.newLineAtOffset(pdfX, pdfY);
-        stream.showText(text);
-        if (letterSpacing != 0) stream.setCharacterSpacing(0);
-        if (wordSpacing != 0) stream.setWordSpacing(0);
-        stream.endText();
+        // Paint each text segment, advancing X cursor between font switches
+        float cursorX = pdfX;
+        for (TextSegment segment : segments) {
+            stream.beginText();
+            stream.setFont(segment.font(), fontSize);
+            stream.setNonStrokingColor(textColor.getRed() / 255f, textColor.getGreen() / 255f, textColor.getBlue() / 255f);
+            if (letterSpacing != 0) stream.setCharacterSpacing(letterSpacing);
+            if (wordSpacing != 0) stream.setWordSpacing(wordSpacing);
+            stream.newLineAtOffset(cursorX, pdfY);
+            stream.showText(segment.text());
+            if (letterSpacing != 0) stream.setCharacterSpacing(0);
+            if (wordSpacing != 0) stream.setWordSpacing(0);
+            stream.endText();
+            cursorX += fontManager.measureText(segment.text(), segment.font(), fontSize);
+        }
 
         if (textAlpha < 1.0f) {
             stream.restoreGraphicsState();
@@ -366,17 +477,17 @@ public class PdfPainter {
         if (style != null) {
             String decoration = style.get("text-decoration");
             if (decoration != null && !"none".equals(decoration)) {
-                float textWidth = fontManager.measureText(text, font, fontSize);
+                float totalWidth = cursorX - pdfX;
                 float thickness = Math.max(fontSize / 20f, 0.5f);
                 float descent = fontManager.getDescent(font, fontSize);
 
                 if (decoration.contains("underline")) {
                     float lineY = toPdfYBaseline(baselineY + descent * 0.3f);
-                    drawLine(stream, pdfX, lineY, pdfX + textWidth, lineY, thickness, textColor);
+                    drawLine(stream, pdfX, lineY, pdfX + totalWidth, lineY, thickness, textColor);
                 }
                 if (decoration.contains("line-through")) {
                     float lineY = toPdfYBaseline(baselineY - ascent * 0.35f);
-                    drawLine(stream, pdfX, lineY, pdfX + textWidth, lineY, thickness, textColor);
+                    drawLine(stream, pdfX, lineY, pdfX + totalWidth, lineY, thickness, textColor);
                 }
             }
         }
@@ -395,6 +506,83 @@ public class PdfPainter {
         float pdfY = toPdfY(layoutY, height);
 
         stream.drawImage(image, pdfX, pdfY, width, height);
+    }
+
+    /**
+     * Creates a PDF link annotation for a box with an href.
+     * External URLs use PDActionURI; internal anchors (#id) use PDActionGoTo
+     * with a PDPageXYZDestination resolved from the anchor map.
+     */
+    private void createLinkAnnotation(Box box, float pdfX, float layoutY,
+                                       float width, float height) throws IOException {
+        String href = box.getHref();
+        if ("#".equals(href)) return; // bare fragment placeholder
+
+        if (href.startsWith("#")) {
+            // Internal anchor — defer until all pages exist so we can use PDPage references
+            String targetId = href.substring(1);
+            float[] target = anchorMap.get(targetId);
+            if (target == null) return; // unresolved anchor
+            int sourcePageIdx = pageManager.getCurrentPageIndex();
+            float pdfY = toPdfY(layoutY, height);
+            pendingInternalLinks.add(new PendingInternalLink(
+                    sourcePageIdx, new PDRectangle(pdfX, pdfY, width, height), targetId));
+            return;
+        }
+
+        // External URL → PDActionURI
+        PDPage page = pageManager.getCurrentPage();
+        if (page == null) return;
+
+        float pdfY = toPdfY(layoutY, height);
+
+        PDAnnotationLink link = new PDAnnotationLink();
+        link.setRectangle(new PDRectangle(pdfX, pdfY, width, height));
+
+        PDActionURI action = new PDActionURI();
+        action.setURI(href);
+        link.setAction(action);
+
+        // Hide default blue border around link annotation
+        PDBorderStyleDictionary borderStyle = new PDBorderStyleDictionary();
+        borderStyle.setWidth(0);
+        link.setBorderStyle(borderStyle);
+
+        page.getAnnotations().add(link);
+    }
+
+    /**
+     * Resolves deferred internal anchor links after all pages have been created.
+     * PDFBox 3.x requires PDActionGoTo destinations to reference actual PDPage objects,
+     * not page numbers. Since forward-referencing pages (e.g., a link on page 1 targeting
+     * page 3) isn't possible during painting, links are collected and resolved here.
+     */
+    public void resolveInternalLinks(PdfPageManager pageManager) throws IOException {
+        for (PendingInternalLink link : pendingInternalLinks) {
+            float[] target = anchorMap.get(link.targetId());
+            if (target == null) continue;
+
+            PDPage targetPage = pageManager.getPage((int) target[0]);
+            PDPage sourcePage = pageManager.getPage(link.sourcePageIndex());
+            if (targetPage == null || sourcePage == null) continue;
+
+            PDPageXYZDestination dest = new PDPageXYZDestination();
+            dest.setPage(targetPage);
+            dest.setTop((int) target[1]);
+
+            PDActionGoTo goTo = new PDActionGoTo();
+            goTo.setDestination(dest);
+
+            PDAnnotationLink annotation = new PDAnnotationLink();
+            annotation.setRectangle(link.rect());
+            annotation.setAction(goTo);
+
+            PDBorderStyleDictionary borderStyle = new PDBorderStyleDictionary();
+            borderStyle.setWidth(0);
+            annotation.setBorderStyle(borderStyle);
+
+            sourcePage.getAnnotations().add(annotation);
+        }
     }
 
     /**
@@ -491,22 +679,52 @@ public class PdfPainter {
     }
 
     /**
-     * Removes characters that the font can't encode (e.g. control chars, missing glyphs).
+     * Splits text into segments where each segment uses a font that can encode all its characters.
+     * Tries the primary font first, then falls back to symbol/other fonts for missing glyphs.
+     * Characters that no font can encode are replaced with spaces (or dropped for control chars).
      */
-    private String sanitizeText(String text, PDFont font) {
-        StringBuilder sb = new StringBuilder();
+    private List<TextSegment> resolveTextSegments(String text, PDFont primaryFont) {
+        List<TextSegment> segments = new ArrayList<>();
+        StringBuilder current = new StringBuilder();
+        PDFont currentFont = primaryFont;
+
         for (int i = 0; i < text.length(); i++) {
             char c = text.charAt(i);
-            try {
-                font.encode(String.valueOf(c));
-                sb.append(c);
-            } catch (Exception e) {
-                // Skip unencodable characters; replace with space for readability
-                if (!Character.isISOControl(c)) {
-                    sb.append(' ');
+
+            if (FontManager.canEncode(primaryFont, c)) {
+                // Primary font can handle this character
+                if (currentFont != primaryFont && current.length() > 0) {
+                    segments.add(new TextSegment(current.toString(), currentFont));
+                    current = new StringBuilder();
+                }
+                currentFont = primaryFont;
+                current.append(c);
+            } else {
+                // Primary font can't encode — try fallback fonts
+                PDFont fallback = fontManager.findFallbackFont(c);
+                if (fallback != null) {
+                    if (currentFont != fallback && current.length() > 0) {
+                        segments.add(new TextSegment(current.toString(), currentFont));
+                        current = new StringBuilder();
+                    }
+                    currentFont = fallback;
+                    current.append(c);
+                } else {
+                    // No font can encode this character — replace with space for readability
+                    if (!Character.isISOControl(c)) {
+                        if (currentFont != primaryFont && current.length() > 0) {
+                            segments.add(new TextSegment(current.toString(), currentFont));
+                            current = new StringBuilder();
+                        }
+                        currentFont = primaryFont;
+                        current.append(' ');
+                    }
                 }
             }
         }
-        return sb.toString();
+        if (current.length() > 0) {
+            segments.add(new TextSegment(current.toString(), currentFont));
+        }
+        return segments;
     }
 }

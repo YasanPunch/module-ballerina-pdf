@@ -76,6 +76,20 @@ public class BoxTreeBuilder {
                 Box childBox = createBox(childEl, childStyle, display, tagName);
                 if (childBox == null) continue;
 
+                // Extract href for <a> tags so link annotations can be created during painting
+                if (tagName.equals("a")) {
+                    String href = DomUtils.attr(childEl, "href");
+                    if (href != null && !href.isEmpty()) {
+                        childBox.setHref(href);
+                    }
+                }
+
+                // Extract id for all elements so internal anchor links can resolve targets
+                String id = DomUtils.attr(childEl, "id");
+                if (id != null && !id.isEmpty()) {
+                    childBox.setId(id);
+                }
+
                 boolean blockLevel = isBlockLevel(display);
                 if (blockLevel) hasBlockChild = true;
 
@@ -111,12 +125,48 @@ public class BoxTreeBuilder {
     /** Wraps accumulated inline children in an anonymous BlockBox and adds to parent. */
     private void flushInlineRun(List<Box> inlineRun, Box parentBox) {
         if (inlineRun.isEmpty()) return;
-        BlockBox anon = new BlockBox(parentBox.getStyle());
+
+        // CSS 2.1 §9.2.1.1: whitespace-only text between block-level boxes
+        // does not generate any boxes
+        boolean allWhitespace = true;
+        for (Box box : inlineRun) {
+            if (!(box instanceof TextRun tr) || !tr.getText().isBlank()) {
+                allWhitespace = false;
+                break;
+            }
+        }
+        if (allWhitespace) {
+            inlineRun.clear();
+            return;
+        }
+
+        // Anonymous blocks inherit only inherited properties from parent (CSS 2.1 §9.2.1.1)
+        ComputedStyle anonStyle = createAnonymousStyle(parentBox.getStyle());
+        BlockBox anon = new BlockBox(anonStyle);
         for (Box child : inlineRun) {
             anon.addChild(child);
         }
         parentBox.addChild(anon);
         inlineRun.clear();
+    }
+
+    /**
+     * Creates a style for anonymous block boxes per CSS 2.1 §9.2.1.1.
+     * Anonymous blocks inherit inherited properties from the enclosing box
+     * but do not get non-inherited properties (margin, padding, border, etc.).
+     */
+    private ComputedStyle createAnonymousStyle(ComputedStyle parentStyle) {
+        ComputedStyle style = new ComputedStyle();
+        style.set("display", "block");
+        if (parentStyle != null) {
+            for (String prop : ComputedStyle.isInheritedProperties()) {
+                String val = parentStyle.get(prop);
+                if (val != null) {
+                    style.set(prop, val);
+                }
+            }
+        }
+        return style;
     }
 
     private Box createBox(Element element, ComputedStyle style, String display, String tagName) {
@@ -131,6 +181,9 @@ public class BoxTreeBuilder {
             case "inline" -> {
                 if (tagName.equals("img")) {
                     yield createReplacedBox(element, style);
+                }
+                if (tagName.equals("br")) {
+                    yield new BrBox(style);
                 }
                 yield new InlineBox(style);
             }

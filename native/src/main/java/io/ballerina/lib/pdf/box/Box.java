@@ -32,6 +32,8 @@ public abstract class Box {
     protected List<Box> children = new ArrayList<>();
     private List<Box> layoutChildren;  // positioned children from layout (null = use children)
     protected Box parent;
+    private String href;  // link target from <a> tags, propagated to leaf boxes
+    private String id;    // element id for internal anchor destinations
 
     public Box(ComputedStyle style) {
         this.style = style;
@@ -140,6 +142,12 @@ public abstract class Box {
         return layoutChildren != null ? layoutChildren : children;
     }
     public void clearLayoutChildren() { this.layoutChildren = null; }
+
+    public String getHref() { return href; }
+    public void setHref(String href) { this.href = href; }
+
+    public String getId() { return id; }
+    public void setId(String id) { this.id = id; }
 
     public abstract String getBoxType();
 }
