@@ -44,14 +44,14 @@ public class ConverterOptions {
                 null, true, null, 0);
     }
 
-    /** Convenience constructor for font size only (backwards compatibility). */
+    /** Convenience constructor for font size only. */
     public ConverterOptions(float defaultFontSizePt) {
         this(defaultFontSizePt, A4_WIDTH, A4_HEIGHT,
                 DEFAULT_MARGIN, DEFAULT_MARGIN, DEFAULT_MARGIN, DEFAULT_MARGIN,
                 null, true, null, 0);
     }
 
-    /** Constructor with all options except custom fonts and maxPages (backwards compatibility). */
+    /** Constructor with all options except custom fonts and maxPages. */
     public ConverterOptions(float defaultFontSizePt,
                             float pageWidth, float pageHeight,
                             float marginTop, float marginRight,
@@ -62,7 +62,7 @@ public class ConverterOptions {
                 additionalCss, preprocess, null, 0);
     }
 
-    /** Constructor with all options except maxPages (backwards compatibility). */
+    /** Constructor with all options except maxPages. */
     public ConverterOptions(float defaultFontSizePt,
                             float pageWidth, float pageHeight,
                             float marginTop, float marginRight,
@@ -92,18 +92,6 @@ public class ConverterOptions {
         this.preprocess = preprocess;
         this.customFonts = customFonts;
         this.maxPages = maxPages;
-    }
-
-    /** Returns options configured for CIBIL reports (9pt, A4, tight margins). For testing only. */
-    public static ConverterOptions cibil() {
-        return new ConverterOptions(9f, A4_WIDTH, A4_HEIGHT,
-                15f * 2.8346457f, 10f * 2.8346457f,
-                15f * 2.8346457f, 10f * 2.8346457f,
-                String.join("\n",
-                        ".maincontainer { width: 100% !important; max-width: 100% !important; }",
-                        ".head1, .headtitle1 { width: auto !important; }"
-                ),
-                true);
     }
 
     /** Resolves page dimensions from a page size name (A4, LETTER, LEGAL). */

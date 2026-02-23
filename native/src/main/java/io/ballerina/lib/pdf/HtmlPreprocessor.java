@@ -37,7 +37,7 @@ public class HtmlPreprocessor {
         return w3cDom.fromJsoup(jsoupDoc);
     }
 
-    /** Backwards-compatible overload using default options. */
+    /** Convenience overload using default options. */
     public org.w3c.dom.Document preprocess(String rawHtml) {
         return preprocess(rawHtml, new ConverterOptions());
     }

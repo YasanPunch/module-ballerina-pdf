@@ -283,12 +283,14 @@ public class BlockFormattingContext {
         // no border-top and no padding-top. Similarly, parent's bottom margin collapses
         // with last child's bottom margin when parent has no border-bottom and no padding-bottom.
         ComputedStyle containerStyle = container.getStyle();
+        boolean isTableCell = container instanceof TableCellBox;
         boolean collapseFirstChildTop = containerStyle != null
+                && !isTableCell
                 && container.getBorderTopWidth() == 0 && container.getPaddingTop() == 0;
         boolean collapseLastChildBottom = containerStyle != null
+                && !isTableCell
                 && container.getBorderBottomWidth() == 0 && container.getPaddingBottom() == 0
                 && (containerStyle.getHeight(0, 0) < 0); // height: auto
-
         for (Box child : orderedChildren) {
             // Handle floated children — floats don't participate in margin collapsing
             if (hasFloats && isFloated(child)) {
@@ -433,7 +435,7 @@ public class BlockFormattingContext {
                     applyRelativeOffset(block, availableWidth, contentHeight);
                 }
 
-            } else {
+            }} else {
                 // Inline content mixed with blocks — position at cursor
                 // Inline content resets margin collapsing
                 if (!isFirstChild) {

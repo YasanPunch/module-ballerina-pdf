@@ -45,7 +45,9 @@ public class TableLayoutEngine {
         List<Box> rows = collectRows(table);
 
         for (Box rowBox : rows) {
-            if (rowBox instanceof TableRowBox row) {
+            if (rowBox instanceof TableRowBox row) { 
+                // TableRowBox is a direct child of TableBox,
+                // it is a plain row with no children, so we can resolve the box model with the table width
                 bfc.resolveBoxModelWithWidth(row, availableWidth);
                 float rowHeight = layoutRow(row, colWidths, availableWidth);
                 row.setX(0);
@@ -54,6 +56,10 @@ public class TableLayoutEngine {
                 row.setHeight(rowHeight);
                 cursorY += rowHeight;
             } else if (rowBox instanceof TableRowGroupBox group) {
+                // TableRowGroupBox is a child of TableBox, so we can resolve the box model with the table width
+                // the difference is that TableRowGroupBox can have children that are not TableRowBoxes
+                // like thead, tbody, tfoot elements,
+                // so we need to resolve the box model with the table width for each child
                 bfc.resolveBoxModelWithWidth(group, availableWidth);
                 float groupY = 0;
                 for (Box child : group.getChildren()) {
@@ -93,6 +99,7 @@ public class TableLayoutEngine {
         measureColumnWidths(table, numCols, minW, maxW);
 
         float[] preferred = new float[numCols];
+        // returns the list that was populated when BoxTreeBuilder processed the colgroup element
         List<Float> colPcts = table.getColumnWidths();
 
         if (colPcts.size() == numCols) {
@@ -120,7 +127,7 @@ public class TableLayoutEngine {
                 }
             }
         } else {
-            // No colgroup — use max-content proportions
+            // No colgroup — empty list, or mismatched count - use max-content proportions
             float totalMaxContent = 0;
             for (float w : maxW) totalMaxContent += w;
 
