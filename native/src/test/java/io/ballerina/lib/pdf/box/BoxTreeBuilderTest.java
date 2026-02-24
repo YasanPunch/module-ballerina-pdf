@@ -19,7 +19,7 @@ class BoxTreeBuilderTest {
      * Builds a box tree from an HTML string and returns the root BlockBox (body).
      */
     private BlockBox buildTree(String html) {
-        Document doc = preprocessor.parseOnly(html);
+        Document doc = preprocessor.preprocess(html);
         CssStylesheet sheet = new CssParser().parse(doc);
         StyleResolver resolver = new StyleResolver(sheet);
         BoxTreeBuilder builder = new BoxTreeBuilder(resolver);

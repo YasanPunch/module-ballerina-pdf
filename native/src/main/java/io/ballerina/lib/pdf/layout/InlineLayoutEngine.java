@@ -16,13 +16,13 @@ import java.util.List;
 public class InlineLayoutEngine {
 
     private final FontManager fontManager;
-    private final float defaultFontSizePt;
+    private final float fontSizePt;
     private final BlockFormattingContext bfc;
 
-    public InlineLayoutEngine(FontManager fontManager, float defaultFontSizePt,
+    public InlineLayoutEngine(FontManager fontManager, float fontSizePt,
                                BlockFormattingContext bfc) {
         this.fontManager = fontManager;
-        this.defaultFontSizePt = defaultFontSizePt;
+        this.fontSizePt = fontSizePt;
         this.bfc = bfc;
     }
 
@@ -185,7 +185,7 @@ public class InlineLayoutEngine {
                 float contentHeight = bfc.layoutChildren(bb, contentWidth);
                 // Apply explicit height + min/max clamping (matches BFC block-level handling)
                 ComputedStyle ibStyle = bb.getStyle();
-                float ibFontSize = ibStyle.getFontSize(defaultFontSizePt);
+                float ibFontSize = ibStyle.getFontSize(fontSizePt);
                 float explicitHeight = ibStyle.getHeight(contentHeight, ibFontSize);
                 if (explicitHeight > 0) {
                     contentHeight = Math.max(contentHeight, explicitHeight);
@@ -200,11 +200,11 @@ public class InlineLayoutEngine {
                 items.add(new InlineItem(bb, outerWidth, outerHeight));
             } else if (box instanceof BrBox br) {
                 // Resolve line-height for the break so empty lines have correct spacing
-                float brFontSize = defaultFontSizePt;
+                float brFontSize = fontSizePt;
                 float brLineHeight;
                 ComputedStyle brStyle = br.getStyle();
                 if (brStyle != null) {
-                    brFontSize = brStyle.getFontSize(defaultFontSizePt);
+                    brFontSize = brStyle.getFontSize(fontSizePt);
                     float cssLH = brStyle.getLineHeight(brFontSize);
                     brLineHeight = cssLH > 0 ? cssLH
                             : fontManager.getLineHeight(fontManager.getDefaultFont(), brFontSize);
@@ -232,14 +232,14 @@ public class InlineLayoutEngine {
         ComputedStyle style = textRun.getStyle();
         if (style == null) {
             textRun.setFont(fontManager.getDefaultFont());
-            textRun.setFontSize(defaultFontSizePt);
+            textRun.setFontSize(fontSizePt);
             return;
         }
 
-        String family = CssValueParser.parsePrimaryFontFamily(style.getFontFamily());
+        String[] families = CssValueParser.parseFontFamilyList(style.getFontFamily());
         boolean bold = style.isBold();
         boolean italic = style.isItalic();
-        float fontSize = style.getFontSize(defaultFontSizePt);
+        float fontSize = style.getFontSize(fontSizePt);
 
         // Check for superscript / subscript
         String verticalAlign = style.get("vertical-align");
@@ -251,7 +251,7 @@ public class InlineLayoutEngine {
             fontSize *= 0.7f;
         }
 
-        PDFont font = fontManager.getFont(family, bold, italic);
+        PDFont font = fontManager.getFont(families, bold, italic);
         textRun.setFont(font);
         textRun.setFontSize(fontSize);
 
@@ -404,7 +404,7 @@ public class InlineLayoutEngine {
      */
     private float computeShrinkToFitWidth(BlockBox box, float availableWidth) {
         ComputedStyle style = box.getStyle();
-        float fontSize = style.getFontSize(defaultFontSizePt);
+        float fontSize = style.getFontSize(fontSizePt);
         float explicitWidth = style.getWidth(availableWidth, fontSize);
         if (explicitWidth > 0) {
             return explicitWidth;
@@ -449,9 +449,9 @@ public class InlineLayoutEngine {
         PDFont font;
         float fontSize;
         if (style != null) {
-            String family = CssValueParser.parsePrimaryFontFamily(style.getFontFamily());
-            font = fontManager.getFont(family, style.isBold(), style.isItalic());
-            fontSize = style.getFontSize(defaultFontSizePt);
+            String[] families = CssValueParser.parseFontFamilyList(style.getFontFamily());
+            font = fontManager.getFont(families, style.isBold(), style.isItalic());
+            fontSize = style.getFontSize(fontSizePt);
 
             // Apply text-transform before measuring (must match resolveTextMetrics)
             String transform = style.getTextTransform();
@@ -460,7 +460,7 @@ public class InlineLayoutEngine {
             else if ("capitalize".equals(transform)) text = capitalize(text);
         } else {
             font = fontManager.getDefaultFont();
-            fontSize = defaultFontSizePt;
+            fontSize = fontSizePt;
         }
 
         float letterSpacing = (style != null) ? style.getLetterSpacing(fontSize) : 0;
@@ -487,9 +487,9 @@ public class InlineLayoutEngine {
         PDFont font;
         float fontSize;
         if (style != null) {
-            String family = CssValueParser.parsePrimaryFontFamily(style.getFontFamily());
-            font = fontManager.getFont(family, style.isBold(), style.isItalic());
-            fontSize = style.getFontSize(defaultFontSizePt);
+            String[] families = CssValueParser.parseFontFamilyList(style.getFontFamily());
+            font = fontManager.getFont(families, style.isBold(), style.isItalic());
+            fontSize = style.getFontSize(fontSizePt);
 
             // Apply text-transform before measuring (must match resolveTextMetrics)
             String transform = style.getTextTransform();
@@ -498,7 +498,7 @@ public class InlineLayoutEngine {
             else if ("capitalize".equals(transform)) text = capitalize(text);
         } else {
             font = fontManager.getDefaultFont();
-            fontSize = defaultFontSizePt;
+            fontSize = fontSizePt;
         }
 
         float letterSpacing = (style != null) ? style.getLetterSpacing(fontSize) : 0;

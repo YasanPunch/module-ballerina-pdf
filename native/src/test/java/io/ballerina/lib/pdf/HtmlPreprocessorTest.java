@@ -20,37 +20,6 @@ class HtmlPreprocessorTest {
     }
 
     @Test
-    void stripsXmlDeclaration() {
-        String html = "<?xml version=\"1.0\" encoding=\"utf-16\"?><html><body>Hello</body></html>";
-        String result = preprocessor.preprocessToString(html);
-        assertFalse(result.contains("<?xml"), "XML declaration should be stripped");
-        assertTrue(result.contains("Hello"), "Content should be preserved");
-    }
-
-    @Test
-    void fixesDuplicateFontFamilyCss() {
-        String html = "<html><head><style>.summary { font-family:font-family:Arial; }</style></head><body>Test</body></html>";
-        String result = preprocessor.preprocessToString(html);
-        assertFalse(result.contains("font-family:font-family:"), "Duplicate font-family should be fixed");
-        assertTrue(result.contains("font-family:"), "font-family property should remain");
-    }
-
-    @Test
-    void mapsArialToLiberationSans() {
-        String html = "<html><head><style>body { font-family: Arial; }</style></head><body>Test</body></html>";
-        String result = preprocessor.preprocessToString(html);
-        assertTrue(result.contains("Liberation Sans"), "Arial should be mapped to Liberation Sans");
-    }
-
-    @Test
-    void injectsPageCss() {
-        String html = "<html><head></head><body>Test</body></html>";
-        String result = preprocessor.preprocessToString(html);
-        assertTrue(result.contains("@page"), "@page CSS should be injected");
-        assertTrue(result.contains("595.3pt"), "A4 page width should be set in points");
-    }
-
-    @Test
     void removesTableWidthAttributes() {
         String html = "<html><body><table width=\"1000\"><tr><td>Cell</td></tr></table></body></html>";
         String result = preprocessor.preprocessToString(html);

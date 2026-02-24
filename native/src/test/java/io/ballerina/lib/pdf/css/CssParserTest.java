@@ -14,7 +14,7 @@ class CssParserTest {
     private final CssParser parser = new CssParser();
 
     private Document parse(String html) {
-        return preprocessor.parseOnly(html);
+        return preprocessor.preprocess(html);
     }
 
     @Test
@@ -244,5 +244,45 @@ class CssParserTest {
         // Should not crash; at least some valid rules should be parsed
         List<CssRule> rules = stylesheet.getRules();
         assertFalse(rules.isEmpty(), "Should parse at least some valid rules from malformed CSS");
+    }
+
+    // ===== additionalCss overload =====
+
+    @Test
+    void additionalCssRulesAppendedAfterDocumentRules() {
+        Document doc = parse("<html><head><style>p { color: red; }</style></head><body><p>test</p></body></html>");
+        CssStylesheet stylesheet = parser.parse(doc, "p { color: blue; }");
+
+        List<CssRule> rules = stylesheet.getRules();
+        assertEquals(2, rules.size(), "Should have document rule + additionalCss rule");
+
+        // additionalCss rule should have strictly higher source order
+        assertTrue(rules.get(1).sourceOrder() > rules.get(0).sourceOrder(),
+                "additionalCss rule should have higher source order than document rule");
+    }
+
+    @Test
+    void additionalCssOverridesDocumentStyleAtEqualSpecificity() {
+        Document doc = parse("<html><head><style>p { color: red; }</style></head><body><p id=\"t\">test</p></body></html>");
+        CssStylesheet stylesheet = parser.parse(doc, "p { color: blue; }");
+
+        // Resolve styles to verify cascade behavior
+        StyleResolver resolver = new StyleResolver(stylesheet);
+        List<org.w3c.dom.Element> paragraphs = io.ballerina.lib.pdf.util.DomUtils.findAll(doc, "p");
+        assertFalse(paragraphs.isEmpty());
+        ComputedStyle style = resolver.resolve(paragraphs.get(0));
+        assertEquals("blue", style.get("color"), "additionalCss should override document CSS at equal specificity");
+    }
+
+    @Test
+    void additionalCssNullBehavesLikeSingleArgParse() {
+        Document doc = parse("<html><head><style>p { color: red; }</style></head><body></body></html>");
+        CssStylesheet withNull = parser.parse(doc, null);
+        // Re-parse since parse consumes the doc
+        Document doc2 = parse("<html><head><style>p { color: red; }</style></head><body></body></html>");
+        CssStylesheet withoutArg = parser.parse(doc2);
+
+        assertEquals(withoutArg.getRules().size(), withNull.getRules().size(),
+                "parse(doc, null) should produce same rules as parse(doc)");
     }
 }

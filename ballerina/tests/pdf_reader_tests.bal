@@ -21,7 +21,7 @@ import ballerina/test;
 
 @test:Config {}
 function testExtractText() returns error? {
-    byte[] pdf = check convertToPdf("<p>Hello World</p>");
+    byte[] pdf = check parseHtml("<p>Hello World</p>");
     string[] pages = check extractText(pdf);
     test:assertTrue(pages.length() > 0, "Expected at least one page");
     test:assertTrue(pages[0].includes("Hello World"), "Expected text content");
@@ -29,9 +29,9 @@ function testExtractText() returns error? {
 
 @test:Config {}
 function testExtractTextFromFile() returns error? {
-    byte[] pdf = check convertToPdf("<p>File Test</p>");
+    byte[] pdf = check parseHtml("<p>File Test</p>");
     check io:fileWriteBytes("tests/resources/test_output.pdf", pdf);
-    string[] pages = check extractTextFromFile("tests/resources/test_output.pdf");
+    string[] pages = check fileExtractText("tests/resources/test_output.pdf");
     test:assertTrue(pages.length() > 0, "Expected at least one page");
     test:assertTrue(pages[0].includes("File Test"), "Expected text content");
 }
@@ -40,7 +40,7 @@ function testExtractTextFromFile() returns error? {
 function testExtractTextMultiplePages() returns error? {
     // Generate a PDF with enough content to potentially span pages
     string html = "<p>Page content for text extraction test</p>";
-    byte[] pdf = check convertToPdf(html);
+    byte[] pdf = check parseHtml(html);
     string[] pages = check extractText(pdf);
     test:assertTrue(pages.length() >= 1, "Expected at least one page of text");
 }
@@ -49,7 +49,7 @@ function testExtractTextMultiplePages() returns error? {
 
 @test:Config {}
 function testToImages() returns error? {
-    byte[] pdf = check convertToPdf("<h1>Image Test</h1>");
+    byte[] pdf = check parseHtml("<h1>Image Test</h1>");
     string[] images = check toImages(pdf);
     test:assertTrue(images.length() > 0, "Expected at least one image");
     test:assertTrue(images[0].length() > 100, "Expected non-trivial base64 image");
@@ -57,9 +57,9 @@ function testToImages() returns error? {
 
 @test:Config {}
 function testToImagesFromFile() returns error? {
-    byte[] pdf = check convertToPdf("<p>File Image Test</p>");
+    byte[] pdf = check parseHtml("<p>File Image Test</p>");
     check io:fileWriteBytes("tests/resources/test_images.pdf", pdf);
-    string[] images = check toImagesFromFile("tests/resources/test_images.pdf");
+    string[] images = check fileToImages("tests/resources/test_images.pdf");
     test:assertTrue(images.length() > 0, "Expected at least one image");
     test:assertTrue(images[0].length() > 100, "Expected non-trivial base64 image");
 }
@@ -68,7 +68,7 @@ function testToImagesFromFile() returns error? {
 
 @test:Config {}
 function testExtractTextInvalidFile() {
-    string[]|Error result = extractTextFromFile("/nonexistent/file.pdf");
+    string[]|Error result = fileExtractText("/nonexistent/file.pdf");
     test:assertTrue(result is ReadError, "Expected ReadError for invalid file");
 }
 
@@ -86,7 +86,7 @@ function testToImagesInvalidBytes() {
 
 @test:Config {}
 function testToImagesInvalidFile() {
-    string[]|Error result = toImagesFromFile("/nonexistent/file.pdf");
+    string[]|Error result = fileToImages("/nonexistent/file.pdf");
     test:assertTrue(result is ReadError, "Expected ReadError for invalid file");
 }
 
@@ -98,13 +98,13 @@ function testExtractTextEmptyInput() {
 
 @test:Config {}
 function testExtractTextWrongFileExtension() {
-    string[]|Error result = extractTextFromFile("test.txt");
+    string[]|Error result = fileExtractText("test.txt");
     test:assertTrue(result is ReadError, "Expected ReadError for non-PDF file extension");
 }
 
 @test:Config {}
 function testInvalidUrlRejectsGracefully() {
-    string[]|Error result = extractTextFromUrl("not a valid url");
+    string[]|Error result = urlExtractText("not a valid url");
     test:assertTrue(result is ReadError, "Expected ReadError for invalid URL");
 }
 
@@ -113,7 +113,7 @@ function testInvalidUrlRejectsGracefully() {
 @test:Config {}
 function testRoundTripTextExtraction() returns error? {
     string inputText = "Round trip verification content";
-    byte[] pdf = check convertToPdf("<p>" + inputText + "</p>");
+    byte[] pdf = check parseHtml("<p>" + inputText + "</p>");
     string[] pages = check extractText(pdf);
     test:assertTrue(pages.length() > 0, "Expected at least one page");
     test:assertTrue(pages[0].includes(inputText), "Extracted text should contain input");

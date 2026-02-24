@@ -13,7 +13,7 @@ import ballerina/io;
 import ballerina/pdf;
 
 public function main() returns error? {
-    byte[] pdfBytes = check pdf:convertToPdf("<h1>Hello World</h1><p>Generated with Ballerina.</p>");
+    byte[] pdfBytes = check pdf:parseHtml("<h1>Hello World</h1><p>Generated with Ballerina.</p>");
     check io:fileWriteBytes("output.pdf", pdfBytes);
 }
 ```
@@ -27,8 +27,8 @@ import ballerina/pdf;
 public function main() returns error? {
     string html = check io:fileReadString("report.html");
 
-    byte[] pdfBytes = check pdf:convertToPdf(html,
-        defaultFontSizePt = 10.0,
+    byte[] pdfBytes = check pdf:parseHtml(html,
+        fontSizePt = 10.0,
         pageSize = pdf:LETTER,
         margins = {top: 72, right: 54, bottom: 72, left: 54},
         additionalCss = "body { font-family: sans-serif; } .container { width: 100% !important; }"

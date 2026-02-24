@@ -42,6 +42,15 @@ public class CssParser {
      * Parses all &lt;style&gt; blocks in the document into a stylesheet.
      */
     public CssStylesheet parse(Document document) {
+        return parse(document, null);
+    }
+
+    /**
+     * Parses all &lt;style&gt; blocks in the document, then appends rules from
+     * {@code additionalCss}. The additional rules get strictly higher source order
+     * indices, so they win cascade ties at equal specificity.
+     */
+    public CssStylesheet parse(Document document, String additionalCss) {
         CssStylesheet stylesheet = new CssStylesheet();
         int[] sourceOrder = {0};
 
@@ -55,6 +64,17 @@ public class CssParser {
 
             CSSRuleListImpl rules = (CSSRuleListImpl) sheet.getCssRules();
             extractRules(rules, stylesheet, sourceOrder);
+        }
+
+        // Parse additionalCss — appended AFTER document rules.
+        // sourceOrder counter continues from where <style> parsing left off,
+        // so these rules have strictly higher source order and win ties at equal specificity.
+        if (additionalCss != null && !additionalCss.isBlank()) {
+            CSSStyleSheetImpl sheet = parseCssText(additionalCss);
+            if (sheet != null) {
+                CSSRuleListImpl rules = (CSSRuleListImpl) sheet.getCssRules();
+                extractRules(rules, stylesheet, sourceOrder);
+            }
         }
 
         return stylesheet;

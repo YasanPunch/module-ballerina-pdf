@@ -54,6 +54,10 @@ public class StyleResolver {
 
     // Default styles for HTML elements (UA stylesheet, per CSS 2.1 Appendix D)
     private static final Map<String, Map<String, String>> UA_STYLES = Map.ofEntries(
+            Map.entry("body", Map.of(
+                    "margin-top", "0", "margin-right", "0", "margin-bottom", "0", "margin-left", "0",
+                    "padding-top", "0", "padding-right", "0", "padding-bottom", "0", "padding-left", "0")),
+            Map.entry("table", Map.of("width", "100%", "table-layout", "fixed")),
             Map.entry("h1", Map.of("font-size", "24px", "font-weight", "bold", "margin-top", "16px", "margin-bottom", "16px")),
             Map.entry("h2", Map.of("font-size", "20px", "font-weight", "bold", "margin-top", "14px", "margin-bottom", "14px")),
             Map.entry("h3", Map.of("font-size", "16px", "font-weight", "bold", "margin-top", "12px", "margin-bottom", "12px")),

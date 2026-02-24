@@ -21,7 +21,7 @@ public class LayoutContext {
     private float marginLeft;
 
     private final FontManager fontManager;
-    private final float defaultFontSizePt;
+    private final float fontSizePt;
 
     public LayoutContext(FontManager fontManager) {
         this(fontManager, new ConverterOptions());
@@ -29,7 +29,7 @@ public class LayoutContext {
 
     public LayoutContext(FontManager fontManager, ConverterOptions options) {
         this.fontManager = fontManager;
-        this.defaultFontSizePt = options.getDefaultFontSizePt();
+        this.fontSizePt = options.getFontSizePt();
         // Initialize from ConverterOptions (these are defaults; configureFromPageRule may override)
         this.pageWidth = options.getPageWidth();
         this.pageHeight = options.getPageHeight();
@@ -98,5 +98,5 @@ public class LayoutContext {
     public float getMarginBottom() { return marginBottom; }
     public float getMarginLeft() { return marginLeft; }
     public FontManager getFontManager() { return fontManager; }
-    public float getDefaultFontSizePt() { return defaultFontSizePt; }
+    public float getFontSizePt() { return fontSizePt; }
 }

@@ -15,7 +15,7 @@ class DomUtilsTest {
     private final HtmlPreprocessor preprocessor = new HtmlPreprocessor();
 
     private Document parse(String html) {
-        return preprocessor.parseOnly(html);
+        return preprocessor.preprocess(html);
     }
 
     private Element findFirst(Document doc, String tag) {

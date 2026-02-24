@@ -32,30 +32,30 @@ public class HtmlToPdfConverter {
     /**
      * Convert a preprocessed W3C DOM Document to PDF bytes.
      */
-    public byte[] convertToPdf(org.w3c.dom.Document document) throws Exception {
-        return convertToPdf(document, new ConverterOptions());
+    public byte[] parseHtml(org.w3c.dom.Document document) throws Exception {
+        return parseHtml(document, new ConverterOptions());
     }
 
     /**
      * Convert a preprocessed W3C DOM Document to PDF bytes with custom options.
      */
-    public byte[] convertToPdf(org.w3c.dom.Document document, ConverterOptions options) throws Exception {
+    public byte[] parseHtml(org.w3c.dom.Document document, ConverterOptions options) throws Exception {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        convertToPdf(document, baos, options);
+        parseHtml(document, baos, options);
         return baos.toByteArray();
     }
 
     /**
      * Convert a preprocessed W3C DOM Document to PDF, writing to the given stream.
      */
-    public void convertToPdf(org.w3c.dom.Document document, OutputStream outputStream) throws Exception {
-        convertToPdf(document, outputStream, new ConverterOptions());
+    public void parseHtml(org.w3c.dom.Document document, OutputStream outputStream) throws Exception {
+        parseHtml(document, outputStream, new ConverterOptions());
     }
 
     /**
      * Convert a preprocessed W3C DOM Document to PDF with custom options, writing to the given stream.
      */
-    public void convertToPdf(org.w3c.dom.Document document, OutputStream outputStream,
+    public void parseHtml(org.w3c.dom.Document document, OutputStream outputStream,
                               ConverterOptions options) throws Exception {
         try (PDDocument pdfDoc = new PDDocument()) {
 
@@ -66,9 +66,9 @@ public class HtmlToPdfConverter {
                 fontManager.loadCustomFonts(pdfDoc, options.getCustomFonts());
             }
 
-            // 2. Parse CSS from <style> blocks
+            // 2. Parse CSS from <style> blocks + additionalCss
             CssParser cssParser = new CssParser();
-            CssStylesheet stylesheet = cssParser.parse(document);
+            CssStylesheet stylesheet = cssParser.parse(document, options.getAdditionalCss());
 
             // 3. Create layout context with page dimensions from @page rule
             LayoutContext layoutContext = new LayoutContext(fontManager, options);
@@ -92,8 +92,8 @@ public class HtmlToPdfConverter {
 
             // 7b. Scale to fit maxPages if needed
             float scale = 1.0f;
-            int maxPages = options.getMaxPages();
-            if (maxPages > 0 && pages.size() > maxPages) {
+            Integer maxPages = options.getMaxPages();
+            if (maxPages != null && pages.size() > maxPages) {
                 float totalHeight = computeVisualHeight(root);
                 float targetHeight = maxPages * layoutContext.getContentHeight();
                 scale = targetHeight / totalHeight;

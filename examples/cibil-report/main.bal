@@ -25,17 +25,31 @@
 // Compare against: resources/49511893_Cons_CIR_NAMRATA.html (open in browser)
 
 import ballerina/io;
+import ballerina/lang.regexp;
 import ballerina/pdf;
 
 public function main() returns error? {
     string html = check io:fileReadString("resources/49511893_Cons_CIR_NAMRATA.html");
 
+    // The CIBIL HTML generator produces a malformed XML declaration with
+    // incorrect encoding — strip it before conversion
+    if html.startsWith("<?xml") {
+        int? end = html.indexOf("?>");
+        if end is int {
+            html = html.substring(end + 2);
+        }
+    }
+
+    // The CIBIL HTML contains duplicate CSS property bugs
+    // (e.g. "font-family:font-family:Arial") — fix with regex
+    html = regexp:replaceAll(re `font-family\s*:\s*font-family\s*:`, html, "font-family:");
+
     // CSS overrides to fit the report layout to the PDF page width
     string css = string `.maincontainer { width: 100% !important; max-width: 100% !important; }
 .head1, .headtitle1 { width: auto !important; }`;
 
-    byte[] pdfBytes = check pdf:convertToPdf(html,
-        defaultFontSizePt = 9.0,
+    byte[] pdfBytes = check pdf:parseHtml(html,
+        fontSizePt = 9.0,
         margins = {
             top: 42.52,    // 15mm
             right: 28.35,  // 10mm

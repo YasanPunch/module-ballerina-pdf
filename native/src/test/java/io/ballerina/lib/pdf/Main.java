@@ -42,7 +42,7 @@ public class Main {
 
         System.out.println("Converting: " + inputPath);
 
-        // Read and preprocess HTML
+        // Read and parse HTML
         String rawHtml = Files.readString(input, StandardCharsets.UTF_8);
         org.w3c.dom.Document w3cDoc = preprocessor.preprocess(rawHtml);
 
@@ -53,7 +53,7 @@ public class Main {
         Files.writeString(debugPath, preprocessor.preprocessToString(rawHtml), StandardCharsets.UTF_8);
 
         // Convert to PDF
-        byte[] pdfBytes = converter.convertToPdf(w3cDoc, options);
+        byte[] pdfBytes = converter.parseHtml(w3cDoc, options);
 
         // Write output
         Files.createDirectories(outputPath.getParent());

@@ -25,7 +25,7 @@ public class ConverterOptions {
     // Default margin: 0pt (no page margin; CSS controls spacing)
     public static final float DEFAULT_MARGIN = 0f;
 
-    private float defaultFontSizePt;
+    private float fontSizePt;
     private float pageWidth;
     private float pageHeight;
     private float marginTop;
@@ -33,55 +33,54 @@ public class ConverterOptions {
     private float marginBottom;
     private float marginLeft;
     private String additionalCss;
-    private boolean preprocess;
     private Map<String, byte[]> customFonts;
-    private int maxPages;
+    private Integer maxPages;
 
-    /** Default options: 12pt font, A4, 36pt margins, no additional CSS, preprocessing enabled. */
+    /** Default options: 12pt font, A4, 0pt margins, no additional CSS. */
     public ConverterOptions() {
         this(DEFAULT_FONT_SIZE_PT, A4_WIDTH, A4_HEIGHT,
                 DEFAULT_MARGIN, DEFAULT_MARGIN, DEFAULT_MARGIN, DEFAULT_MARGIN,
-                null, true, null, 0);
+                null, null, null);
     }
 
     /** Convenience constructor for font size only. */
-    public ConverterOptions(float defaultFontSizePt) {
-        this(defaultFontSizePt, A4_WIDTH, A4_HEIGHT,
+    public ConverterOptions(float fontSizePt) {
+        this(fontSizePt, A4_WIDTH, A4_HEIGHT,
                 DEFAULT_MARGIN, DEFAULT_MARGIN, DEFAULT_MARGIN, DEFAULT_MARGIN,
-                null, true, null, 0);
+                null, null, null);
     }
 
     /** Constructor with all options except custom fonts and maxPages. */
-    public ConverterOptions(float defaultFontSizePt,
+    public ConverterOptions(float fontSizePt,
                             float pageWidth, float pageHeight,
                             float marginTop, float marginRight,
                             float marginBottom, float marginLeft,
-                            String additionalCss, boolean preprocess) {
-        this(defaultFontSizePt, pageWidth, pageHeight,
+                            String additionalCss) {
+        this(fontSizePt, pageWidth, pageHeight,
                 marginTop, marginRight, marginBottom, marginLeft,
-                additionalCss, preprocess, null, 0);
+                additionalCss, null, null);
     }
 
     /** Constructor with all options except maxPages. */
-    public ConverterOptions(float defaultFontSizePt,
+    public ConverterOptions(float fontSizePt,
                             float pageWidth, float pageHeight,
                             float marginTop, float marginRight,
                             float marginBottom, float marginLeft,
-                            String additionalCss, boolean preprocess,
+                            String additionalCss,
                             Map<String, byte[]> customFonts) {
-        this(defaultFontSizePt, pageWidth, pageHeight,
+        this(fontSizePt, pageWidth, pageHeight,
                 marginTop, marginRight, marginBottom, marginLeft,
-                additionalCss, preprocess, customFonts, 0);
+                additionalCss, customFonts, null);
     }
 
     /** Full constructor with all options. */
-    public ConverterOptions(float defaultFontSizePt,
+    public ConverterOptions(float fontSizePt,
                             float pageWidth, float pageHeight,
                             float marginTop, float marginRight,
                             float marginBottom, float marginLeft,
-                            String additionalCss, boolean preprocess,
-                            Map<String, byte[]> customFonts, int maxPages) {
-        this.defaultFontSizePt = defaultFontSizePt;
+                            String additionalCss,
+                            Map<String, byte[]> customFonts, Integer maxPages) {
+        this.fontSizePt = fontSizePt;
         this.pageWidth = pageWidth;
         this.pageHeight = pageHeight;
         this.marginTop = marginTop;
@@ -89,7 +88,6 @@ public class ConverterOptions {
         this.marginBottom = marginBottom;
         this.marginLeft = marginLeft;
         this.additionalCss = additionalCss;
-        this.preprocess = preprocess;
         this.customFonts = customFonts;
         this.maxPages = maxPages;
     }
@@ -103,7 +101,7 @@ public class ConverterOptions {
         };
     }
 
-    public float getDefaultFontSizePt() { return defaultFontSizePt; }
+    public float getFontSizePt() { return fontSizePt; }
     public float getPageWidth() { return pageWidth; }
     public float getPageHeight() { return pageHeight; }
     public float getMarginTop() { return marginTop; }
@@ -111,11 +109,10 @@ public class ConverterOptions {
     public float getMarginBottom() { return marginBottom; }
     public float getMarginLeft() { return marginLeft; }
     public String getAdditionalCss() { return additionalCss; }
-    public boolean isPreprocess() { return preprocess; }
     public Map<String, byte[]> getCustomFonts() { return customFonts; }
-    public int getMaxPages() { return maxPages; }
+    public Integer getMaxPages() { return maxPages; }
 
-    public void setDefaultFontSizePt(float defaultFontSizePt) { this.defaultFontSizePt = defaultFontSizePt; }
+    public void setFontSizePt(float fontSizePt) { this.fontSizePt = fontSizePt; }
     public void setPageWidth(float pageWidth) { this.pageWidth = pageWidth; }
     public void setPageHeight(float pageHeight) { this.pageHeight = pageHeight; }
     public void setMarginTop(float marginTop) { this.marginTop = marginTop; }
@@ -123,7 +120,6 @@ public class ConverterOptions {
     public void setMarginBottom(float marginBottom) { this.marginBottom = marginBottom; }
     public void setMarginLeft(float marginLeft) { this.marginLeft = marginLeft; }
     public void setAdditionalCss(String additionalCss) { this.additionalCss = additionalCss; }
-    public void setPreprocess(boolean preprocess) { this.preprocess = preprocess; }
     public void setCustomFonts(Map<String, byte[]> customFonts) { this.customFonts = customFonts; }
-    public void setMaxPages(int maxPages) { this.maxPages = maxPages; }
+    public void setMaxPages(Integer maxPages) { this.maxPages = maxPages; }
 }

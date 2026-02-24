@@ -110,4 +110,58 @@ class CssValueParserTest {
     void parsePrimaryFontFamilyUnquoted() {
         assertEquals("Arial", CssValueParser.parsePrimaryFontFamily("Arial, sans-serif"));
     }
+
+    // --- parseFontFamilyList tests ---
+
+    @Test
+    void parseFontFamilyListMultiple() {
+        assertArrayEquals(
+                new String[]{"Arial", "Helvetica", "sans-serif"},
+                CssValueParser.parseFontFamilyList("Arial, Helvetica, sans-serif"));
+    }
+
+    @Test
+    void parseFontFamilyListQuoted() {
+        assertArrayEquals(
+                new String[]{"Liberation Sans", "Arial", "sans-serif"},
+                CssValueParser.parseFontFamilyList("'Liberation Sans', Arial, sans-serif"));
+    }
+
+    @Test
+    void parseFontFamilyListDoubleQuoted() {
+        assertArrayEquals(
+                new String[]{"Times New Roman", "Georgia", "serif"},
+                CssValueParser.parseFontFamilyList("\"Times New Roman\", Georgia, serif"));
+    }
+
+    @Test
+    void parseFontFamilyListSingle() {
+        assertArrayEquals(
+                new String[]{"Arial"},
+                CssValueParser.parseFontFamilyList("Arial"));
+    }
+
+    @Test
+    void parseFontFamilyListWhitespace() {
+        assertArrayEquals(
+                new String[]{"Arial", "Helvetica"},
+                CssValueParser.parseFontFamilyList(" Arial , Helvetica "));
+    }
+
+    @Test
+    void parseFontFamilyListNull() {
+        assertArrayEquals(new String[0], CssValueParser.parseFontFamilyList(null));
+    }
+
+    @Test
+    void parseFontFamilyListBlank() {
+        assertArrayEquals(new String[0], CssValueParser.parseFontFamilyList("  "));
+    }
+
+    @Test
+    void parseFontFamilyListMixedQuotes() {
+        assertArrayEquals(
+                new String[]{"Arial", "Times New Roman", "sans-serif"},
+                CssValueParser.parseFontFamilyList("'Arial', \"Times New Roman\", sans-serif"));
+    }
 }

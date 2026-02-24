@@ -47,7 +47,7 @@ public class FontManager {
                     System.err.println("WARNING: Font not found on classpath: " + fontFile);
                     continue;
                 }
-                PDType0Font font = PDType0Font.load(document, is);
+                PDType0Font font = PDType0Font.load(document, is, true);
                 String key = buildKey(fontFile);
                 fontMap.put(key, font);
             }
@@ -61,7 +61,7 @@ public class FontManager {
         // Load symbol font for glyph fallback (Dingbats, Math, Arrows, etc.)
         try (InputStream is = getClass().getClassLoader().getResourceAsStream(SYMBOL_FONT_FILE)) {
             if (is != null) {
-                PDType0Font symbolFont = PDType0Font.load(document, is);
+                PDType0Font symbolFont = PDType0Font.load(document, is, true);
                 fallbackFonts.add(symbolFont);
             }
         }
@@ -79,7 +79,7 @@ public class FontManager {
             String name = entry.getKey();
             byte[] fontBytes = entry.getValue();
 
-            PDType0Font font = PDType0Font.load(document, new ByteArrayInputStream(fontBytes));
+            PDType0Font font = PDType0Font.load(document, new ByteArrayInputStream(fontBytes), true);
 
             // Detect bold/italic from font metadata first, then fall back to key name
             var descriptor = font.getFontDescriptor();
@@ -106,32 +106,102 @@ public class FontManager {
             fontMap.put(key, font);
             customFamilies.add(family);
         }
+
+        // Register custom font regular variants as glyph-level fallback candidates.
+        // Inserted before existing fallback fonts (e.g., Noto Symbols) so user-provided
+        // fonts are tried first for mixed-script content.
+        // Note: each loadCustomFonts() call only adds fonts from that call's map.
+        int insertPos = 0;
+        for (String family : customFamilies) {
+            PDFont regular = fontMap.get(family + "|false|false");
+            if (regular != null) {
+                fallbackFonts.add(insertPos++, regular);
+            }
+        }
     }
 
     /**
      * Resolves a CSS font-family, weight, and style to a loaded PDFont.
+     * Delegates to the array-based overload for a single-family input.
      */
     public PDFont getFont(String family, boolean bold, boolean italic) {
-        String normalizedFamily = normalizeFamily(family);
-        String key = normalizedFamily + "|" + bold + "|" + italic;
+        return getFont(new String[]{family}, bold, italic);
+    }
+
+    /**
+     * Resolves a CSS font-family fallback chain to a loaded PDFont.
+     * Walks the chain in order, returning the first family that maps to a loaded font.
+     * Falls back to the default font only after exhausting all families.
+     */
+    public PDFont getFont(String[] families, boolean bold, boolean italic) {
+        for (String family : families) {
+            String resolved = tryResolveFamily(family);
+            if (resolved == null) {
+                continue;
+            }
+            PDFont font = lookupFont(resolved, bold, italic);
+            if (font != null) {
+                return font;
+            }
+        }
+        return defaultFont;
+    }
+
+    /**
+     * Attempts to resolve a single CSS family name to a loaded font family key.
+     * Returns null if the family is not recognized — the caller should try the next
+     * family in the chain rather than falling back to a default.
+     */
+    private String tryResolveFamily(String family) {
+        if (family == null) return null;
+        String lower = family.toLowerCase().trim();
+        lower = lower.replace("'", "").replace("\"", "");
+
+        // Custom fonts take priority
+        if (customFamilies.contains(lower)) {
+            return lower;
+        }
+
+        // Map known families — sans-serif check must precede serif check
+        // because "sans-serif".contains("serif") is true
+        if (lower.contains("liberation sans") || lower.contains("arial")
+                || lower.contains("helvetica") || lower.equals("sans-serif")) {
+            return "liberation sans";
+        }
+        if (lower.contains("liberation serif") || lower.contains("times")
+                || lower.equals("serif")) {
+            return "liberation serif";
+        }
+        if (lower.equals("monospace") || lower.equals("courier")) {
+            return "liberation sans"; // no monospace font bundled; best available fallback
+        }
+
+        // Unrecognized family — return null so the chain walker tries the next entry
+        return null;
+    }
+
+    /**
+     * Looks up a font by resolved family key with bold/italic fallback cascade.
+     * Returns null if no variant of the family is loaded.
+     */
+    private PDFont lookupFont(String resolvedFamily, boolean bold, boolean italic) {
+        String key = resolvedFamily + "|" + bold + "|" + italic;
         PDFont font = fontMap.get(key);
         if (font != null) return font;
 
         // Try without italic
         if (italic) {
-            font = fontMap.get(normalizedFamily + "|" + bold + "|false");
+            font = fontMap.get(resolvedFamily + "|" + bold + "|false");
             if (font != null) return font;
         }
         // Try without bold
         if (bold) {
-            font = fontMap.get(normalizedFamily + "|false|" + italic);
+            font = fontMap.get(resolvedFamily + "|false|" + italic);
             if (font != null) return font;
         }
         // Try regular variant of the family
-        font = fontMap.get(normalizedFamily + "|false|false");
-        if (font != null) return font;
-
-        return defaultFont;
+        font = fontMap.get(resolvedFamily + "|false|false");
+        return font;
     }
 
     public PDFont getDefaultFont() {
@@ -219,24 +289,4 @@ public class FontManager {
         return family + "|" + bold + "|" + italic;
     }
 
-    private String normalizeFamily(String family) {
-        if (family == null) return "liberation sans";
-        String lower = family.toLowerCase().trim();
-        // Strip quotes
-        lower = lower.replace("'", "").replace("\"", "");
-        // Check custom fonts first — return directly if a custom family matches
-        if (customFamilies.contains(lower)) {
-            return lower;
-        }
-        // Map common families
-        if (lower.contains("liberation sans") || lower.contains("arial")
-                || lower.contains("helvetica") || lower.contains("sans-serif")) {
-            return "liberation sans";
-        }
-        if (lower.contains("liberation serif") || lower.contains("times")
-                || lower.contains("serif")) {
-            return "liberation serif";
-        }
-        return "liberation sans"; // default fallback
-    }
 }

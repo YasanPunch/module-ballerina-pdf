@@ -18,8 +18,8 @@ public class BlockFormattingContext {
 
     public BlockFormattingContext(LayoutContext ctx) {
         this.ctx = ctx;
-        this.inlineEngine = new InlineLayoutEngine(ctx.getFontManager(), ctx.getDefaultFontSizePt(), this);
-        this.tableEngine = new TableLayoutEngine(this, ctx.getFontManager(), ctx.getDefaultFontSizePt());
+        this.inlineEngine = new InlineLayoutEngine(ctx.getFontManager(), ctx.getFontSizePt(), this);
+        this.tableEngine = new TableLayoutEngine(this, ctx.getFontManager(), ctx.getFontSizePt());
     }
 
     /**
@@ -106,7 +106,7 @@ public class BlockFormattingContext {
                                          List<FloatBox> activeFloats) {
         resolveBoxModelWithWidth(block, containerWidth);
         ComputedStyle style = block.getStyle();
-        float fontSize = style.getFontSize(ctx.getDefaultFontSizePt());
+        float fontSize = style.getFontSize(ctx.getFontSizePt());
         String side = style.getFloat();
 
         // Resolve width (shrink-to-fit for floats without explicit width)
@@ -315,7 +315,7 @@ public class BlockFormattingContext {
                 resolveBoxModelWithWidth(table, availableWidth);
 
                 ComputedStyle tableStyle = table.getStyle();
-                float tableFontSize = tableStyle != null ? tableStyle.getFontSize(ctx.getDefaultFontSizePt()) : ctx.getDefaultFontSizePt();
+                float tableFontSize = tableStyle != null ? tableStyle.getFontSize(ctx.getFontSizePt()) : ctx.getFontSizePt();
                 float tableContentWidth = availableWidth
                         - table.getMarginLeft() - table.getMarginRight()
                         - table.getBorderLeftWidth() - table.getBorderRightWidth()
@@ -367,7 +367,7 @@ public class BlockFormattingContext {
                 resolveBoxModelWithWidth(block, availableWidth);
 
                 ComputedStyle style = block.getStyle();
-                float explicitWidth = style.getWidth(availableWidth, ctx.getDefaultFontSizePt());
+                float explicitWidth = style.getWidth(availableWidth, ctx.getFontSizePt());
                 float blockWidth;
                 if (explicitWidth > 0) {
                     blockWidth = Math.min(explicitWidth, availableWidth
@@ -382,7 +382,7 @@ public class BlockFormattingContext {
                 }
                 blockWidth = Math.max(0, blockWidth);
 
-                float fontSize = style.getFontSize(ctx.getDefaultFontSizePt());
+                float fontSize = style.getFontSize(ctx.getFontSizePt());
                 float maxW = style.getMaxWidth(availableWidth, fontSize);
                 float minW = style.getMinWidth(availableWidth, fontSize);
                 blockWidth = Math.max(minW, Math.min(blockWidth, maxW));
@@ -435,7 +435,7 @@ public class BlockFormattingContext {
                     applyRelativeOffset(block, availableWidth, contentHeight);
                 }
 
-            }} else {
+            } else {
                 // Inline content mixed with blocks — position at cursor
                 // Inline content resets margin collapsing
                 if (!isFirstChild) {
@@ -447,7 +447,7 @@ public class BlockFormattingContext {
                 resolveBoxModelWithWidth(child, availableWidth);
                 child.setX(0);
                 child.setY(cursorY);
-                cursorY += child.getHeight() > 0 ? child.getHeight() : ctx.getDefaultFontSizePt() * 1.333f;
+                cursorY += child.getHeight() > 0 ? child.getHeight() : ctx.getFontSizePt() * 1.333f;
             }
         }
 
@@ -519,7 +519,7 @@ public class BlockFormattingContext {
      */
     private void applyRelativeOffset(Box box, float containerWidth, float containerHeight) {
         ComputedStyle style = box.getStyle();
-        float fontSize = style.getFontSize(ctx.getDefaultFontSizePt());
+        float fontSize = style.getFontSize(ctx.getFontSizePt());
         float top = style.getTop(containerHeight, fontSize);
         float left = style.getLeft(containerWidth, fontSize);
         float right = style.getRight(containerWidth, fontSize);
@@ -563,7 +563,7 @@ public class BlockFormattingContext {
      */
     private void layoutAbsoluteChild(BlockBox box, float containerWidth, float containerHeight) {
         ComputedStyle style = box.getStyle();
-        float fontSize = style.getFontSize(ctx.getDefaultFontSizePt());
+        float fontSize = style.getFontSize(ctx.getFontSizePt());
         resolveBoxModelWithWidth(box, containerWidth);
 
         // Resolve width
@@ -619,7 +619,7 @@ public class BlockFormattingContext {
         ComputedStyle style = box.getStyle();
         if (style == null) return;
 
-        float fontSize = style.getFontSize(ctx.getDefaultFontSizePt());
+        float fontSize = style.getFontSize(ctx.getFontSizePt());
 
         box.setMarginTop(style.getMarginTop(containerWidth, fontSize));
         box.setMarginRight(style.getMarginRight(containerWidth, fontSize));

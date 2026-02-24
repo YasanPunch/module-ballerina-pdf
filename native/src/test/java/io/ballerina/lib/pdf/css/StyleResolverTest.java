@@ -19,7 +19,7 @@ class StyleResolverTest {
      * ComputedStyle for the element with the given ID.
      */
     private ComputedStyle resolveStyle(String html, String targetId) {
-        Document doc = preprocessor.parseOnly(html);
+        Document doc = preprocessor.preprocess(html);
         CssStylesheet sheet = new CssParser().parse(doc);
         StyleResolver resolver = new StyleResolver(sheet);
         Element target = findById(doc, targetId);
@@ -31,7 +31,7 @@ class StyleResolverTest {
      * Resolves style for a specific tag (first occurrence).
      */
     private ComputedStyle resolveStyleByTag(String html, String tagName) {
-        Document doc = preprocessor.parseOnly(html);
+        Document doc = preprocessor.preprocess(html);
         CssStylesheet sheet = new CssParser().parse(doc);
         StyleResolver resolver = new StyleResolver(sheet);
         List<Element> found = DomUtils.findAll(doc, tagName);

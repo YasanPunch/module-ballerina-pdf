@@ -29,25 +29,25 @@ function assertValidPdf(byte[] pdf, string msg) {
 
 @test:Config {}
 function testBasicConversion() returns error? {
-    byte[] pdf = check convertToPdf("<h1>Hello World</h1>");
+    byte[] pdf = check parseHtml("<h1>Hello World</h1>");
     assertValidPdf(pdf, "Basic conversion");
 }
 
 @test:Config {}
 function testConversionWithCustomFontSize() returns error? {
-    byte[] pdf = check convertToPdf("<p>Small text</p>", defaultFontSizePt = 9.0);
+    byte[] pdf = check parseHtml("<p>Small text</p>", fontSizePt = 9.0);
     assertValidPdf(pdf, "Custom font size");
 }
 
 @test:Config {}
 function testConversionWithLetterPageSize() returns error? {
-    byte[] pdf = check convertToPdf("<p>Letter page</p>", pageSize = LETTER);
+    byte[] pdf = check parseHtml("<p>Letter page</p>", pageSize = LETTER);
     assertValidPdf(pdf, "Letter page size");
 }
 
 @test:Config {}
 function testConversionWithCustomMargins() returns error? {
-    byte[] pdf = check convertToPdf("<p>Custom margins</p>",
+    byte[] pdf = check parseHtml("<p>Custom margins</p>",
         margins = {top: 72, right: 72, bottom: 72, left: 72}
     );
     assertValidPdf(pdf, "Custom margins");
@@ -55,7 +55,7 @@ function testConversionWithCustomMargins() returns error? {
 
 @test:Config {}
 function testConversionWithAdditionalCss() returns error? {
-    byte[] pdf = check convertToPdf(
+    byte[] pdf = check parseHtml(
         "<div class=\"highlight\"><p>Styled content</p></div>",
         additionalCss = ".highlight { background-color: yellow; padding: 10px; }"
     );
@@ -64,7 +64,7 @@ function testConversionWithAdditionalCss() returns error? {
 
 @test:Config {}
 function testMalformedHtml() returns error? {
-    byte[] pdf = check convertToPdf("<div><p>unclosed paragraph<span>and span");
+    byte[] pdf = check parseHtml("<div><p>unclosed paragraph<span>and span");
     assertValidPdf(pdf, "Malformed HTML");
 }
 
@@ -91,15 +91,15 @@ function testFullHtmlDocument() returns error? {
         </body>
         </html>
     `;
-    byte[] pdf = check convertToPdf(html);
+    byte[] pdf = check parseHtml(html);
     assertValidPdf(pdf, "Full HTML document");
 }
 
 @test:Config {}
 function testAllOptionsCombined() returns error? {
-    byte[] pdf = check convertToPdf(
+    byte[] pdf = check parseHtml(
         "<p>All options</p>",
-        defaultFontSizePt = 10.0,
+        fontSizePt = 10.0,
         pageSize = LETTER,
         margins = {top: 72, right: 54, bottom: 72, left: 54},
         additionalCss = "p { color: darkblue; }"
@@ -109,33 +109,20 @@ function testAllOptionsCombined() returns error? {
 
 @test:Config {}
 function testEmptyHtml() returns error? {
-    byte[] pdf = check convertToPdf("");
+    byte[] pdf = check parseHtml("");
     assertValidPdf(pdf, "Empty HTML");
 }
 
 @test:Config {}
 function testWhitespaceOnlyHtml() returns error? {
-    byte[] pdf = check convertToPdf("   \n\t  ");
+    byte[] pdf = check parseHtml("   \n\t  ");
     assertValidPdf(pdf, "Whitespace-only HTML");
-}
-
-@test:Config {}
-function testPreprocessDisabled() returns error? {
-    string xhtml = string `<?xml version="1.0" encoding="UTF-8"?>
-        <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
-            "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
-        <html xmlns="http://www.w3.org/1999/xhtml">
-        <head><title>Test</title></head>
-        <body><p>Well-formed XHTML</p></body>
-        </html>`;
-    byte[] pdf = check convertToPdf(xhtml, preprocess = false);
-    assertValidPdf(pdf, "Preprocess disabled with XHTML");
 }
 
 @test:Config {}
 function testErrorTypeIsError() {
     // Verify the positive path — a successful result is not an Error.
-    byte[]|Error result = convertToPdf("<p>Valid HTML</p>");
+    byte[]|Error result = parseHtml("<p>Valid HTML</p>");
     test:assertTrue(result is byte[], "Expected successful conversion, not Error");
 }
 
@@ -143,7 +130,7 @@ function testErrorTypeIsError() {
 function testConversionWithCustomFont() returns error? {
     byte[] fontBytes = check io:fileReadBytes("../native/src/main/resources/fonts/LiberationSans-Regular.ttf");
     map<byte[]> fonts = {"TestFont": fontBytes};
-    byte[] pdf = check convertToPdf(
+    byte[] pdf = check parseHtml(
         string `<html><head><style>body { font-family: 'TestFont'; }</style></head>
                 <body><p>Custom font rendering</p></body></html>`,
         customFonts = fonts

@@ -37,25 +37,24 @@ public type PageMargins record {|
 
 # Options controlling HTML-to-PDF conversion behavior.
 #
-# + defaultFontSizePt - Base font size in points. CSS "medium" maps to this value. Default: 12.0 (CSS spec).
+# + fontSizePt - Base font size in points (default: 12.0, per CSS spec "medium" keyword).
+#                Used when CSS does not specify a font-size for an element. CSS `font-size`
+#                declarations in the HTML take precedence over this value.
 # + pageSize - Page size for the PDF output. Default: A4.
 # + margins - Page margins in points (top, right, bottom, left). Default: 0 (no page margin; CSS controls spacing).
-# + preprocess - Whether to run HTML preprocessing (Jsoup cleanup, CSS injection).
-#                Disable only if input is already well-formed XHTML. Default: true.
 # + additionalCss - Additional CSS to inject into the document before conversion.
 #                   Use this for consumer-specific style overrides without modifying the HTML.
 # + customFonts - Custom fonts to register for the conversion. Each entry maps a font name to TTF
 #                 file content as bytes. The font name is used for CSS font-family matching.
 #                 To register weight/style variants, use suffixes: "MyFont Bold", "MyFont Italic",
 #                 "MyFont BoldItalic". CSS then references just `font-family: MyFont`.
-# + maxPages - Maximum number of pages in the output PDF. When set to a positive value,
-#              content is scaled to fit within this page limit. 0 means no limit (default).
+# + maxPages - Maximum number of pages in the output PDF. Content is scaled to fit within
+#              this page limit. Must be greater than 0 when provided.
 public type ConversionOptions record {|
-    float defaultFontSizePt = 12.0;
+    float fontSizePt = 12.0;
     PageSize pageSize = A4;
     PageMargins margins = {top: 0, right: 0, bottom: 0, left: 0};
-    boolean preprocess = true;
     string? additionalCss = ();
     map<byte[]>? customFonts = ();
-    int maxPages = 0;
+    int? maxPages = ();
 |};

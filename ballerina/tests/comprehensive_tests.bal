@@ -22,14 +22,14 @@ const string COMPREHENSIVE_HTML_DIR = "../examples/comprehensive-html-tests/";
 
 // Converts an HTML file, validates PDF output, and verifies expected text content.
 function convertAndVerifyFile(string filename, int minPages, string[] expectedContent,
-        int maxPages = 0) returns error? {
+        int? maxPages = ()) returns error? {
     string html = check io:fileReadString(COMPREHENSIVE_HTML_DIR + filename);
 
     byte[] pdf;
-    if maxPages > 0 {
-        pdf = check convertToPdf(html, maxPages = maxPages);
+    if maxPages is int {
+        pdf = check parseHtml(html, maxPages = maxPages);
     } else {
-        pdf = check convertToPdf(html);
+        pdf = check parseHtml(html);
     }
 
     assertValidPdf(pdf, filename);
@@ -38,7 +38,7 @@ function convertAndVerifyFile(string filename, int minPages, string[] expectedCo
     test:assertTrue(pages.length() >= minPages,
         filename + ": Expected at least " + minPages.toString() + " page(s), got " + pages.length().toString());
 
-    if maxPages > 0 {
+    if maxPages is int {
         test:assertEquals(pages.length(), maxPages,
             filename + ": maxPages=" + maxPages.toString() + " but got " + pages.length().toString());
     }

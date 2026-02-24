@@ -21,12 +21,12 @@ public class TableLayoutEngine {
 
     private final BlockFormattingContext bfc;
     private final FontManager fontManager;
-    private final float defaultFontSizePt;
+    private final float fontSizePt;
 
-    public TableLayoutEngine(BlockFormattingContext bfc, FontManager fontManager, float defaultFontSizePt) {
+    public TableLayoutEngine(BlockFormattingContext bfc, FontManager fontManager, float fontSizePt) {
         this.bfc = bfc;
         this.fontManager = fontManager;
-        this.defaultFontSizePt = defaultFontSizePt;
+        this.fontSizePt = fontSizePt;
     }
 
     /**
@@ -273,14 +273,14 @@ public class TableLayoutEngine {
         float fontSize;
 
         if (style != null) {
-            String family = CssValueParser.parsePrimaryFontFamily(style.getFontFamily());
+            String[] families = CssValueParser.parseFontFamilyList(style.getFontFamily());
             boolean bold = style.isBold();
             boolean italic = style.isItalic();
-            fontSize = style.getFontSize(defaultFontSizePt);
-            font = fontManager.getFont(family, bold, italic);
+            fontSize = style.getFontSize(fontSizePt);
+            font = fontManager.getFont(families, bold, italic);
         } else {
             font = fontManager.getDefaultFont();
-            fontSize = defaultFontSizePt;
+            fontSize = fontSizePt;
         }
 
         float maxWidth = 0;
@@ -352,7 +352,7 @@ public class TableLayoutEngine {
         // Enforce explicit cell heights as minimum row height
         for (Box child : row.getChildren()) {
             if (child instanceof TableCellBox cell && cell.getStyle() != null) {
-                float explicitHeight = cell.getStyle().getHeight(-1, defaultFontSizePt);
+                float explicitHeight = cell.getStyle().getHeight(-1, fontSizePt);
                 if (explicitHeight > 0) {
                     maxCellHeight = Math.max(maxCellHeight, explicitHeight);
                 }
@@ -361,7 +361,7 @@ public class TableLayoutEngine {
 
         // Enforce explicit row height as minimum
         if (row.getStyle() != null) {
-            float rowExplicitHeight = row.getStyle().getHeight(-1, defaultFontSizePt);
+            float rowExplicitHeight = row.getStyle().getHeight(-1, fontSizePt);
             if (rowExplicitHeight > 0) {
                 maxCellHeight = Math.max(maxCellHeight, rowExplicitHeight);
             }
@@ -472,14 +472,14 @@ public class TableLayoutEngine {
         float fontSize;
 
         if (style != null) {
-            String family = CssValueParser.parsePrimaryFontFamily(style.getFontFamily());
+            String[] families = CssValueParser.parseFontFamilyList(style.getFontFamily());
             boolean bold = style.isBold();
             boolean italic = style.isItalic();
-            fontSize = style.getFontSize(defaultFontSizePt);
-            font = fontManager.getFont(family, bold, italic);
+            fontSize = style.getFontSize(fontSizePt);
+            font = fontManager.getFont(families, bold, italic);
         } else {
             font = fontManager.getDefaultFont();
-            fontSize = defaultFontSizePt;
+            fontSize = fontSizePt;
         }
 
         return fontManager.measureText(text, font, fontSize);

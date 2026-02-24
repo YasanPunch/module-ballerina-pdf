@@ -23,21 +23,30 @@ public final class Native {
     /**
      * Converts HTML to PDF bytes.
      * <p>
-     * Called from Ballerina: {@code convertToPdf(string html, *ConversionOptions options)}
+     * Called from Ballerina: {@code parseHtml(string html, *ConversionOptions options)}
      *
      * @param html    HTML content as a Ballerina string
      * @param options ConversionOptions record as a BMap
      * @return byte[] (as BArray) on success, BError on failure
      */
     @SuppressWarnings("unchecked")
-    public static Object convertToPdf(BString html, BMap<BString, Object> options) {
+    public static Object parseHtml(BString html, BMap<BString, Object> options) {
         try {
             // Read options from BMap
-            float fontSize = getFloat(options, "defaultFontSizePt", ConverterOptions.DEFAULT_FONT_SIZE_PT);
+            float fontSize = getFloat(options, "fontSizePt", ConverterOptions.DEFAULT_FONT_SIZE_PT);
             String pageSize = getString(options, "pageSize", "A4");
-            boolean preprocess = getBoolean(options, "preprocess", true);
             String additionalCss = getNullableString(options, "additionalCss");
-            int maxPages = getInt(options, "maxPages", 0);
+
+            // maxPages is optional (nil = no limit)
+            Integer maxPages = null;
+            Object maxPagesObj = options.get(StringUtils.fromString("maxPages"));
+            if (maxPagesObj instanceof Number num) {
+                maxPages = num.intValue();
+                if (maxPages <= 0) {
+                    return DiagnosticLog.renderError(
+                            "maxPages must be greater than 0, got: " + maxPages, null);
+                }
+            }
 
             // Read custom fonts from nested map
             Map<String, byte[]> customFonts = null;
@@ -76,17 +85,13 @@ public final class Native {
             ConverterOptions opts = new ConverterOptions(
                     fontSize, dims[0], dims[1],
                     marginTop, marginRight, marginBottom, marginLeft,
-                    additionalCss, preprocess, customFonts, maxPages);
+                    additionalCss, customFonts, maxPages);
 
-            // Phase 1: Preprocess HTML
+            // Phase 1: Parse HTML
             HtmlPreprocessor preprocessor = new HtmlPreprocessor();
             org.w3c.dom.Document doc;
             try {
-                if (preprocess) {
-                    doc = preprocessor.preprocess(html.getValue(), opts);
-                } else {
-                    doc = preprocessor.parseOnly(html.getValue());
-                }
+                doc = preprocessor.preprocess(html.getValue());
             } catch (Exception e) {
                 return DiagnosticLog.htmlParseError(
                         "HTML parsing failed: " + e.getMessage(), e);
@@ -94,7 +99,7 @@ public final class Native {
 
             // Phase 2: Convert to PDF
             HtmlToPdfConverter converter = new HtmlToPdfConverter();
-            byte[] pdf = converter.convertToPdf(doc, opts);
+            byte[] pdf = converter.parseHtml(doc, opts);
 
             return ValueCreator.createArrayValue(pdf);
         } catch (Exception e) {
@@ -119,7 +124,7 @@ public final class Native {
     /**
      * Converts each page of a PDF file to Base64-encoded PNG images.
      */
-    public static Object toImagesFromFile(BString filePath) {
+    public static Object fileToImages(BString filePath) {
         try (PDDocument doc = PdfReader.loadFromFile(filePath.getValue())) {
             return ValueCreator.createArrayValue(PdfReader.toImages(doc));
         } catch (Exception e) {
@@ -130,7 +135,7 @@ public final class Native {
     /**
      * Converts each page of a PDF at the given URL to Base64-encoded PNG images.
      */
-    public static Object toImagesFromUrl(BString url) {
+    public static Object urlToImages(BString url) {
         try (PDDocument doc = PdfReader.loadFromUrl(url.getValue())) {
             return ValueCreator.createArrayValue(PdfReader.toImages(doc));
         } catch (Exception e) {
@@ -152,7 +157,7 @@ public final class Native {
     /**
      * Extracts text content from each page of a PDF file.
      */
-    public static Object extractTextFromFile(BString filePath) {
+    public static Object fileExtractText(BString filePath) {
         try (PDDocument doc = PdfReader.loadFromFile(filePath.getValue())) {
             return ValueCreator.createArrayValue(PdfReader.extractText(doc));
         } catch (Exception e) {
@@ -163,7 +168,7 @@ public final class Native {
     /**
      * Extracts text content from each page of a PDF at the given URL.
      */
-    public static Object extractTextFromUrl(BString url) {
+    public static Object urlExtractText(BString url) {
         try (PDDocument doc = PdfReader.loadFromUrl(url.getValue())) {
             return ValueCreator.createArrayValue(PdfReader.extractText(doc));
         } catch (Exception e) {
@@ -172,14 +177,6 @@ public final class Native {
     }
 
     // --- BMap helper methods ---
-
-    private static int getInt(BMap<BString, Object> map, String key, int defaultValue) {
-        Object value = map.get(StringUtils.fromString(key));
-        if (value instanceof Number num) {
-            return num.intValue();
-        }
-        return defaultValue;
-    }
 
     private static float getFloat(BMap<BString, Object> map, String key, float defaultValue) {
         Object value = map.get(StringUtils.fromString(key));
@@ -193,14 +190,6 @@ public final class Native {
         Object value = map.get(StringUtils.fromString(key));
         if (value instanceof BString bStr) {
             return bStr.getValue();
-        }
-        return defaultValue;
-    }
-
-    private static boolean getBoolean(BMap<BString, Object> map, String key, boolean defaultValue) {
-        Object value = map.get(StringUtils.fromString(key));
-        if (value instanceof Boolean b) {
-            return b;
         }
         return defaultValue;
     }

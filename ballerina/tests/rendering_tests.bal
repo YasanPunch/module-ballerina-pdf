@@ -26,7 +26,7 @@ function joinPages(string[] pages) returns string {
 
 @test:Config {}
 function testRendersMinimalHtml() returns error? {
-    byte[] pdf = check convertToPdf("<html><body><p>Hello World</p></body></html>");
+    byte[] pdf = check parseHtml("<html><body><p>Hello World</p></body></html>");
     string[] pages = check extractText(pdf);
     string text = joinPages(pages);
     test:assertTrue(text.includes("Hello World"), "PDF should contain 'Hello World'");
@@ -34,7 +34,7 @@ function testRendersMinimalHtml() returns error? {
 
 @test:Config {}
 function testRendersTableContent() returns error? {
-    byte[] pdf = check convertToPdf(
+    byte[] pdf = check parseHtml(
         "<html><body><table><tr><td>Cell 1</td><td>Cell 2</td></tr></table></body></html>"
     );
     string[] pages = check extractText(pdf);
@@ -48,7 +48,7 @@ function testRendersBase64Image() returns error? {
     string html = string `<html><body>
         <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAIAAAACUFjqAAAAEklEQVR4nGP4z8CAB+GTG8HSALfKY52fTcuYAAAAAElFTkSuQmCC" />
         </body></html>`;
-    byte[] pdf = check convertToPdf(html);
+    byte[] pdf = check parseHtml(html);
     assertValidPdf(pdf, "Base64 image");
     string[] pages = check extractText(pdf);
     test:assertEquals(pages.length(), 1, "PDF with small image should be 1 page");
@@ -62,7 +62,7 @@ function testRendersMultiplePages() returns error? {
     }
     html += "</body></html>";
 
-    byte[] pdf = check convertToPdf(html);
+    byte[] pdf = check parseHtml(html);
     string[] pages = check extractText(pdf);
     test:assertTrue(pages.length() > 1, "200 paragraphs should span multiple pages, got: " + pages.length().toString());
     string text = joinPages(pages);
@@ -78,7 +78,7 @@ function testRendersTextDecoration() returns error? {
         + "<p><u>underlined text</u></p>"
         + "<p><s>struck through</s></p>"
         + "</body></html>";
-    byte[] pdf = check convertToPdf(html);
+    byte[] pdf = check parseHtml(html);
     string[] pages = check extractText(pdf);
     string text = joinPages(pages);
     test:assertTrue(text.includes("underlined text"), "PDF should contain underlined text");
@@ -88,7 +88,7 @@ function testRendersTextDecoration() returns error? {
 @test:Config {}
 function testRendersSubscript() returns error? {
     string html = "<html><body><p>H<sub>2</sub>O is water</p></body></html>";
-    byte[] pdf = check convertToPdf(html);
+    byte[] pdf = check parseHtml(html);
     string[] pages = check extractText(pdf);
     string text = joinPages(pages);
     test:assertTrue(text.includes("2"), "PDF should contain subscript '2'");
@@ -106,7 +106,7 @@ function testRendersTextTransform() returns error? {
         <p class="lower">HELLO WORLD</p>
         <p class="cap">hello world</p>
         </body></html>`;
-    byte[] pdf = check convertToPdf(html);
+    byte[] pdf = check parseHtml(html);
     string[] pages = check extractText(pdf);
     string text = joinPages(pages);
     test:assertTrue(text.includes("HELLO WORLD"), "uppercase transform should produce 'HELLO WORLD'");
@@ -124,7 +124,7 @@ function testRendersTableVerticalAlign() returns error? {
         <td style="vertical-align: middle;">Middle</td>
         <td style="vertical-align: bottom;">Bottom</td>
         </tr></table></body></html>`;
-    byte[] pdf = check convertToPdf(html);
+    byte[] pdf = check parseHtml(html);
     string[] pages = check extractText(pdf);
     string text = joinPages(pages);
     test:assertTrue(text.includes("Top"), "Should contain 'Top'");
@@ -139,7 +139,7 @@ function testRendersTableWithValignAttr() returns error? {
         <td valign="top">Top aligned</td>
         <td valign="middle">Middle aligned</td>
         </tr></table></body></html>`;
-    byte[] pdf = check convertToPdf(html);
+    byte[] pdf = check parseHtml(html);
     string[] pages = check extractText(pdf);
     string text = joinPages(pages);
     test:assertTrue(text.includes("Top aligned"), "Should render valign=top text");
@@ -153,7 +153,7 @@ function testRendersNestedTable() returns error? {
         + "<table><tr><td>Inner Cell 1</td><td>Inner Cell 2</td></tr></table>"
         + "</td><td>Outer Cell</td></tr></table>"
         + "</body></html>";
-    byte[] pdf = check convertToPdf(html);
+    byte[] pdf = check parseHtml(html);
     string[] pages = check extractText(pdf);
     string text = joinPages(pages);
     test:assertTrue(text.includes("Inner Cell 1"), "Should contain 'Inner Cell 1'");
@@ -168,7 +168,7 @@ function testRendersInlineBlock() returns error? {
     string html = string `<html><body>
         <p>Before <span style="display: inline-block; border: 1px solid black; padding: 5px;">inline block content</span> after</p>
         </body></html>`;
-    byte[] pdf = check convertToPdf(html);
+    byte[] pdf = check parseHtml(html);
     string[] pages = check extractText(pdf);
     string text = joinPages(pages);
     test:assertTrue(text.includes("Before"), "Should contain 'Before'");
@@ -183,7 +183,7 @@ function testRendersMultipleInlineBlocks() returns error? {
         </style></head><body>
         <div><span class="box">Box A</span> <span class="box">Box B</span> <span class="box">Box C</span></div>
         </body></html>`;
-    byte[] pdf = check convertToPdf(html);
+    byte[] pdf = check parseHtml(html);
     string[] pages = check extractText(pdf);
     string text = joinPages(pages);
     test:assertTrue(text.includes("Box A"), "Should contain 'Box A'");
@@ -199,7 +199,7 @@ function testRendersChildCombinatorCss() returns error? {
         div > p { font-size: 20px; }
         </style></head>
         <body><div><p>Direct child</p><span><p>Nested child</p></span></div></body></html>`;
-    byte[] pdf = check convertToPdf(html);
+    byte[] pdf = check parseHtml(html);
     string[] pages = check extractText(pdf);
     string text = joinPages(pages);
     test:assertTrue(text.includes("Direct child"), "PDF should contain styled direct child text");
@@ -215,7 +215,7 @@ function testRendersCssSpecificity() returns error? {
         </style></head><body>
         <p id="unique" class="highlight">Specificity test</p>
         </body></html>`;
-    byte[] pdf = check convertToPdf(html);
+    byte[] pdf = check parseHtml(html);
     string[] pages = check extractText(pdf);
     string text = joinPages(pages);
     test:assertTrue(text.includes("Specificity test"), "Should render text regardless of specificity resolution");
@@ -229,7 +229,7 @@ function testRendersWithCustomFont() returns error? {
     map<byte[]> fonts = {"TestFont": fontBytes};
     string html = string `<html><head><style>body { font-family: 'TestFont'; }</style></head>
         <body><p>Custom font text</p></body></html>`;
-    byte[] pdf = check convertToPdf(html, customFonts = fonts);
+    byte[] pdf = check parseHtml(html, customFonts = fonts);
     string[] pages = check extractText(pdf);
     string text = joinPages(pages);
     test:assertTrue(text.includes("Custom font text"), "PDF should contain text rendered with custom font");
@@ -244,7 +244,7 @@ function testRendersPositionRelative() returns error? {
         + "<p style=\"position: relative; top: 20px; left: 10px;\">Offset paragraph</p>"
         + "<p>Third paragraph</p>"
         + "</body></html>";
-    byte[] pdf = check convertToPdf(html);
+    byte[] pdf = check parseHtml(html);
     string[] pages = check extractText(pdf);
     string text = joinPages(pages);
     test:assertTrue(text.includes("First paragraph"), "Should contain 'First paragraph'");
@@ -259,7 +259,7 @@ function testRendersPositionAbsolute() returns error? {
         <p>Container text</p>
         <div style="position: absolute; top: 10px; right: 10px;">Badge</div>
         </div></body></html>`;
-    byte[] pdf = check convertToPdf(html);
+    byte[] pdf = check parseHtml(html);
     string[] pages = check extractText(pdf);
     string text = joinPages(pages);
     test:assertTrue(text.includes("Container text"), "Should contain 'Container text'");
@@ -274,7 +274,7 @@ function testAbsolutePositionDoesNotAffectFlow() returns error? {
         <div style="position: absolute; top: 0; left: 0;">Floating overlay</div>
         <p>After absolute</p>
         </div></body></html>`;
-    byte[] pdf = check convertToPdf(html);
+    byte[] pdf = check parseHtml(html);
     string[] pages = check extractText(pdf);
     string text = joinPages(pages);
     test:assertTrue(text.includes("Before absolute"), "Should contain 'Before absolute'");
@@ -289,7 +289,7 @@ function testRendersOrderedList() returns error? {
     string html = "<html><body>"
         + "<ol><li>First item</li><li>Second item</li><li>Third item</li></ol>"
         + "</body></html>";
-    byte[] pdf = check convertToPdf(html);
+    byte[] pdf = check parseHtml(html);
     string[] pages = check extractText(pdf);
     string text = joinPages(pages);
     test:assertTrue(text.includes("1."), "Should contain '1.' numbering");
@@ -305,7 +305,7 @@ function testRendersUnorderedList() returns error? {
     string html = "<html><body>"
         + "<ul><li>Bullet A</li><li>Bullet B</li></ul>"
         + "</body></html>";
-    byte[] pdf = check convertToPdf(html);
+    byte[] pdf = check parseHtml(html);
     string[] pages = check extractText(pdf);
     string text = joinPages(pages);
     test:assertTrue(text.includes("Bullet A"), "Should contain 'Bullet A'");
@@ -321,7 +321,7 @@ function testRendersCenterAlignedText() returns error? {
         </style></head><body>
         <p class="center">Centered paragraph</p>
         </body></html>`;
-    byte[] pdf = check convertToPdf(html);
+    byte[] pdf = check parseHtml(html);
     string[] pages = check extractText(pdf);
     string text = joinPages(pages);
     test:assertTrue(text.includes("Centered paragraph"), "Should contain centered text");
@@ -334,7 +334,7 @@ function testRendersMinWidth() returns error? {
         </style></head><body>
         <div class="minbox">Min width box content</div>
         </body></html>`;
-    byte[] pdf = check convertToPdf(html);
+    byte[] pdf = check parseHtml(html);
     string[] pages = check extractText(pdf);
     string text = joinPages(pages);
     test:assertTrue(text.includes("Min width box content"), "Should render min-width constrained element");
@@ -347,7 +347,7 @@ function testRendersFontShorthand() returns error? {
         </style></head><body>
         <p id="styled">Bold fourteen pixel text</p>
         </body></html>`;
-    byte[] pdf = check convertToPdf(html);
+    byte[] pdf = check parseHtml(html);
     string[] pages = check extractText(pdf);
     string text = joinPages(pages);
     test:assertTrue(text.includes("Bold fourteen pixel text"), "Should render font shorthand styled text");
@@ -362,7 +362,7 @@ function testRendersBackgroundImage() returns error? {
         </style></head><body>
         <div id="bgimg">Over image</div>
         </body></html>`;
-    byte[] pdf = check convertToPdf(html);
+    byte[] pdf = check parseHtml(html);
     assertValidPdf(pdf, "Background image");
     string[] pages = check extractText(pdf);
     string text = joinPages(pages);
@@ -373,7 +373,7 @@ function testRendersBackgroundImage() returns error? {
 
 @test:Config {}
 function testHandlesEmptyBody() returns error? {
-    byte[] pdf = check convertToPdf("<html><body></body></html>");
+    byte[] pdf = check parseHtml("<html><body></body></html>");
     assertValidPdf(pdf, "Empty body");
     string[] pages = check extractText(pdf);
     test:assertEquals(pages.length(), 1, "Empty body should produce exactly 1 page");
@@ -384,7 +384,7 @@ function testHandlesEmptyBody() returns error? {
 @test:Config {}
 function testSmokeTestBasicHtml() returns error? {
     string html = check io:fileReadString("tests/resources/smoke-test.html");
-    byte[] pdf = check convertToPdf(html);
+    byte[] pdf = check parseHtml(html);
     assertValidPdf(pdf, "Smoke test");
     string[] pages = check extractText(pdf);
     string text = joinPages(pages);
@@ -402,7 +402,7 @@ function testRendersFloatLeftWithText() returns error? {
         <div style="float: left; width: 100px; height: 50px; background-color: #ccc;">Sidebar</div>
         <p>Main content that flows beside the floated element</p>
         </body></html>`;
-    byte[] pdf = check convertToPdf(html);
+    byte[] pdf = check parseHtml(html);
     string[] pages = check extractText(pdf);
     string text = joinPages(pages);
     test:assertTrue(text.includes("Sidebar"), "Should contain float content 'Sidebar'");
@@ -416,7 +416,7 @@ function testRendersFloatLeftAndRight() returns error? {
         <div style="float: right; width: 100px;">Right float</div>
         <p>Content between floats</p>
         </body></html>`;
-    byte[] pdf = check convertToPdf(html);
+    byte[] pdf = check parseHtml(html);
     string[] pages = check extractText(pdf);
     string text = joinPages(pages);
     test:assertTrue(text.includes("Left float"), "Should contain 'Left float'");
@@ -431,7 +431,7 @@ function testRendersClearBoth() returns error? {
         <div style="float: right; width: 150px; height: 100px;">Float B</div>
         <div style="clear: both;">Cleared footer content</div>
         </body></html>`;
-    byte[] pdf = check convertToPdf(html);
+    byte[] pdf = check parseHtml(html);
     string[] pages = check extractText(pdf);
     string text = joinPages(pages);
     test:assertTrue(text.includes("Float A"), "Should contain 'Float A'");
@@ -451,7 +451,7 @@ function testRendersWithMediaQueries() returns error? {
         </style></head><body>
         <p>Content with media queries</p>
         </body></html>`;
-    byte[] pdf = check convertToPdf(html);
+    byte[] pdf = check parseHtml(html);
     assertValidPdf(pdf, "Media queries");
     string[] pages = check extractText(pdf);
     string text = joinPages(pages);
@@ -465,7 +465,7 @@ function testRendersWithBorderRadius() returns error? {
         </style></head><body>
         <div class="card">Rounded card content</div>
         </body></html>`;
-    byte[] pdf = check convertToPdf(html);
+    byte[] pdf = check parseHtml(html);
     string[] pages = check extractText(pdf);
     string text = joinPages(pages);
     test:assertTrue(text.includes("Rounded card content"), "Should render text inside border-radius element");
@@ -478,7 +478,7 @@ function testRendersWithBoxShadow() returns error? {
         </style></head><body>
         <div class="shadow">Shadow box content</div>
         </body></html>`;
-    byte[] pdf = check convertToPdf(html);
+    byte[] pdf = check parseHtml(html);
     string[] pages = check extractText(pdf);
     string text = joinPages(pages);
     test:assertTrue(text.includes("Shadow box content"), "Should render text inside box-shadow element");
@@ -491,7 +491,7 @@ function testRendersWithOpacity() returns error? {
         </style></head><body>
         <div class="faded">Semi-transparent content</div>
         </body></html>`;
-    byte[] pdf = check convertToPdf(html);
+    byte[] pdf = check parseHtml(html);
     string[] pages = check extractText(pdf);
     string text = joinPages(pages);
     test:assertTrue(text.includes("Semi-transparent content"), "Should render text with opacity");
@@ -504,7 +504,7 @@ function testRendersWithLetterSpacing() returns error? {
         </style></head><body>
         <p class="spaced">Spaced out text here</p>
         </body></html>`;
-    byte[] pdf = check convertToPdf(html);
+    byte[] pdf = check parseHtml(html);
     string[] pages = check extractText(pdf);
     string text = joinPages(pages);
     test:assertTrue(text.includes("Spaced"), "Should render text with letter/word spacing");
@@ -519,7 +519,7 @@ function testRendersWithMarginCollapsing() returns error? {
         <p>Second paragraph</p>
         <p>Third paragraph</p>
         </body></html>`;
-    byte[] pdf = check convertToPdf(html);
+    byte[] pdf = check parseHtml(html);
     string[] pages = check extractText(pdf);
     string text = joinPages(pages);
     test:assertTrue(text.includes("First paragraph"), "Should contain first paragraph");

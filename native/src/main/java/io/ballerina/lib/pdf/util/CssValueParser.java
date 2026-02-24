@@ -121,4 +121,31 @@ public class CssValueParser {
         first = first.replace("'", "").replace("\"", "");
         return first;
     }
+
+    /**
+     * Parses a CSS font-family declaration into its full fallback chain.
+     * Splits on commas, strips quotes (single and double) from each entry, trims whitespace.
+     * E.g. "'NonexistentFont', Arial, sans-serif" → ["NonexistentFont", "Arial", "sans-serif"]
+     *
+     * @param fontFamily the CSS font-family value
+     * @return array of family names in fallback order; empty array for null/blank input
+     */
+    public static String[] parseFontFamilyList(String fontFamily) {
+        if (fontFamily == null || fontFamily.isBlank()) return new String[0];
+        String[] parts = fontFamily.split(",");
+        String[] result = new String[parts.length];
+        int count = 0;
+        for (String part : parts) {
+            String trimmed = part.trim().replace("'", "").replace("\"", "");
+            if (!trimmed.isEmpty()) {
+                result[count++] = trimmed;
+            }
+        }
+        if (count == parts.length) {
+            return result;
+        }
+        String[] compact = new String[count];
+        System.arraycopy(result, 0, compact, 0, count);
+        return compact;
+    }
 }

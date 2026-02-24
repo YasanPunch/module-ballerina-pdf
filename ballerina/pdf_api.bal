@@ -21,12 +21,12 @@ import ballerina/jballerina.java;
 # Converts HTML content to PDF bytes.
 #
 # + html - The HTML string to convert (can be a full document or fragment).
-#          Encoding is handled at the I/O boundary — use `io:fileReadString()` to read
+#          Encoding is handled at the I/O boundary — use io:fileReadString() to read
 #          HTML files, which decodes from UTF-8 by default. By the time the string reaches
 #          this function, it is already Unicode.
 # + options - Conversion options (all optional with defaults)
 # + return - PDF file content as a byte array, or an error
-public isolated function convertToPdf(string html, *ConversionOptions options)
+public isolated function parseHtml(string html, *ConversionOptions options)
     returns byte[]|Error = @java:Method {
     'class: "io.ballerina.lib.pdf.Native"
 } external;
@@ -45,7 +45,7 @@ public isolated function extractText(byte[] pdf) returns string[]|Error = @java:
 #
 # + filePath - Path to the PDF file
 # + return - An array of text strings (one per page), or an error
-public isolated function extractTextFromFile(string filePath) returns string[]|Error = @java:Method {
+public isolated function fileExtractText(string filePath) returns string[]|Error = @java:Method {
     'class: "io.ballerina.lib.pdf.Native"
 } external;
 
@@ -53,7 +53,7 @@ public isolated function extractTextFromFile(string filePath) returns string[]|E
 #
 # + url - URL pointing to a PDF document
 # + return - An array of text strings (one per page), or an error
-public isolated function extractTextFromUrl(string url) returns string[]|Error = @java:Method {
+public isolated function urlExtractText(string url) returns string[]|Error = @java:Method {
     'class: "io.ballerina.lib.pdf.Native"
 } external;
 
@@ -71,7 +71,7 @@ public isolated function toImages(byte[] pdf) returns string[]|Error = @java:Met
 #
 # + filePath - Path to the PDF file
 # + return - An array of Base64-encoded PNG strings (one per page), or an error
-public isolated function toImagesFromFile(string filePath) returns string[]|Error = @java:Method {
+public isolated function fileToImages(string filePath) returns string[]|Error = @java:Method {
     'class: "io.ballerina.lib.pdf.Native"
 } external;
 
@@ -79,6 +79,6 @@ public isolated function toImagesFromFile(string filePath) returns string[]|Erro
 #
 # + url - URL pointing to a PDF document
 # + return - An array of Base64-encoded PNG strings (one per page), or an error
-public isolated function toImagesFromUrl(string url) returns string[]|Error = @java:Method {
+public isolated function urlToImages(string url) returns string[]|Error = @java:Method {
     'class: "io.ballerina.lib.pdf.Native"
 } external;
