@@ -1,6 +1,8 @@
 package io.ballerina.lib.pdf.paint;
 
-import io.ballerina.lib.pdf.box.*;
+import io.ballerina.lib.pdf.box.Box;
+import io.ballerina.lib.pdf.box.ReplacedBox;
+import io.ballerina.lib.pdf.box.TextRun;
 import io.ballerina.lib.pdf.css.ComputedStyle;
 import io.ballerina.lib.pdf.layout.LayoutContext;
 import io.ballerina.lib.pdf.layout.PageBreaker;

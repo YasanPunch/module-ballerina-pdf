@@ -6,8 +6,6 @@ import org.junit.jupiter.api.Test;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 
-import java.util.List;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 class StyleResolverTest {
@@ -25,18 +23,6 @@ class StyleResolverTest {
         Element target = findById(doc, targetId);
         assertNotNull(target, "Element with id='" + targetId + "' not found");
         return resolver.resolve(target);
-    }
-
-    /**
-     * Resolves style for a specific tag (first occurrence).
-     */
-    private ComputedStyle resolveStyleByTag(String html, String tagName) {
-        Document doc = preprocessor.preprocess(html);
-        CssStylesheet sheet = new CssParser().parse(doc);
-        StyleResolver resolver = new StyleResolver(sheet);
-        List<Element> found = DomUtils.findAll(doc, tagName);
-        assertFalse(found.isEmpty(), "Expected to find <" + tagName + ">");
-        return resolver.resolve(found.get(0));
     }
 
     private Element findById(Document doc, String id) {

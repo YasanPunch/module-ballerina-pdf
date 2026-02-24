@@ -14,7 +14,7 @@ public class BlockFormattingContext {
 
     private final LayoutContext ctx;
     private final InlineLayoutEngine inlineEngine;
-    private TableLayoutEngine tableEngine;
+    private final TableLayoutEngine tableEngine;
 
     public BlockFormattingContext(LayoutContext ctx) {
         this.ctx = ctx;
@@ -106,6 +106,7 @@ public class BlockFormattingContext {
                                          List<FloatBox> activeFloats) {
         resolveBoxModelWithWidth(block, containerWidth);
         ComputedStyle style = block.getStyle();
+        if (style == null) return new FloatBox(block, 0, cursorY, 0, 0, "left");
         float fontSize = style.getFontSize(ctx.getFontSizePt());
         String side = style.getFloat();
 
@@ -205,19 +206,16 @@ public class BlockFormattingContext {
         // Determine if children contain block-level elements (excluding floats,
         // which are removed from normal flow)
         boolean hasBlockChildren = false;
-        boolean hasInlineChildren = false;
 
         for (Box child : orderedChildren) {
             if (isFloated(child)) continue; // floats don't determine block/inline context
             if (child instanceof BlockBox bb
                     && bb.getStyle() != null
                     && "inline-block".equals(bb.getStyle().getDisplay())) {
-                hasInlineChildren = true;
+                // inline-block doesn't create block context
             } else if (child instanceof BlockBox || child instanceof TableBox
                     || child instanceof TableRowGroupBox || child instanceof TableRowBox) {
                 hasBlockChildren = true;
-            } else {
-                hasInlineChildren = true;
             }
         }
 
@@ -367,6 +365,7 @@ public class BlockFormattingContext {
                 resolveBoxModelWithWidth(block, availableWidth);
 
                 ComputedStyle style = block.getStyle();
+                if (style == null) continue;
                 float explicitWidth = style.getWidth(availableWidth, ctx.getFontSizePt());
                 float blockWidth;
                 if (explicitWidth > 0) {
@@ -519,6 +518,7 @@ public class BlockFormattingContext {
      */
     private void applyRelativeOffset(Box box, float containerWidth, float containerHeight) {
         ComputedStyle style = box.getStyle();
+        if (style == null) return;
         float fontSize = style.getFontSize(ctx.getFontSizePt());
         float top = style.getTop(containerHeight, fontSize);
         float left = style.getLeft(containerWidth, fontSize);
@@ -563,6 +563,7 @@ public class BlockFormattingContext {
      */
     private void layoutAbsoluteChild(BlockBox box, float containerWidth, float containerHeight) {
         ComputedStyle style = box.getStyle();
+        if (style == null) return;
         float fontSize = style.getFontSize(ctx.getFontSizePt());
         resolveBoxModelWithWidth(box, containerWidth);
 

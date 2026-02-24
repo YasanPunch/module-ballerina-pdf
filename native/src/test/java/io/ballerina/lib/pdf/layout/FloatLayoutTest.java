@@ -19,7 +19,6 @@ class FloatLayoutTest {
     private static BlockFormattingContext bfc;
 
     private static final float CONTAINER_WIDTH = 500f;
-    private static final float FONT_SIZE = 12f;
 
     @BeforeAll
     static void setUp() throws IOException {
@@ -84,7 +83,7 @@ class FloatLayoutTest {
     @Test
     void floatLeftPositionsAtLeftEdge() {
         BlockBox floated = floatBox("left", 100, 50);
-        BlockBox container = layoutContainer(floated);
+        layoutContainer(floated);
 
         // Float should be positioned at left edge (x=0 + margin)
         assertEquals(0f, floated.getX(), 0.01f,
@@ -98,7 +97,7 @@ class FloatLayoutTest {
     @Test
     void floatRightPositionsAtRightEdge() {
         BlockBox floated = floatBox("right", 100, 50);
-        BlockBox container = layoutContainer(floated);
+        layoutContainer(floated);
 
         // Float should be positioned at right edge: containerWidth - outerWidth
         float expectedX = CONTAINER_WIDTH - 100f;
@@ -124,7 +123,7 @@ class FloatLayoutTest {
     void multipleLeftFloatsStack() {
         BlockBox float1 = floatBox("left", 100, 50);
         BlockBox float2 = floatBox("left", 100, 50);
-        BlockBox container = layoutContainer(float1, float2);
+        layoutContainer(float1, float2);
 
         // Second float should be placed next to or below the first
         // If they fit side by side (100 + 100 = 200 < 500), they'll be at same Y
@@ -139,7 +138,7 @@ class FloatLayoutTest {
     void leftAndRightFloatsSideBySide() {
         BlockBox leftFloat = floatBox("left", 150, 50);
         BlockBox rightFloat = floatBox("right", 150, 50);
-        BlockBox container = layoutContainer(leftFloat, rightFloat);
+        layoutContainer(leftFloat, rightFloat);
 
         // Left float at left edge
         assertEquals(0f, leftFloat.getX(), 0.01f);
@@ -156,7 +155,7 @@ class FloatLayoutTest {
     void clearLeftMovesBelow() {
         BlockBox floated = floatBox("left", 200, 100);
         BlockBox cleared = clearBlock("left", "Cleared content");
-        BlockBox container = layoutContainer(floated, cleared);
+        layoutContainer(floated, cleared);
 
         // Cleared block should be below the float
         assertTrue(cleared.getY() >= 100f,
@@ -168,7 +167,7 @@ class FloatLayoutTest {
         BlockBox leftFloat = floatBox("left", 150, 80);
         BlockBox rightFloat = floatBox("right", 150, 120);
         BlockBox cleared = clearBlock("both", "Cleared content");
-        BlockBox container = layoutContainer(leftFloat, rightFloat, cleared);
+        layoutContainer(leftFloat, rightFloat, cleared);
 
         // Cleared block should be below the tallest float (120)
         assertTrue(cleared.getY() >= 120f,
@@ -178,7 +177,7 @@ class FloatLayoutTest {
     @Test
     void floatWidthRespected() {
         BlockBox floated = floatBox("left", 250, 75);
-        BlockBox container = layoutContainer(floated);
+        layoutContainer(floated);
 
         assertEquals(250f, floated.getWidth(), 0.01f,
                 "Float should have the specified width");
@@ -203,7 +202,7 @@ class FloatLayoutTest {
         BlockBox float1 = floatBox("left", 200, 50);
         BlockBox float2 = floatBox("left", 200, 50);
         BlockBox float3 = floatBox("left", 200, 50);
-        BlockBox container = layoutContainer(float1, float2, float3);
+        layoutContainer(float1, float2, float3);
 
         // First two fit side by side (200+200 = 400 < 500)
         assertEquals(0f, float1.getX(), 0.01f);

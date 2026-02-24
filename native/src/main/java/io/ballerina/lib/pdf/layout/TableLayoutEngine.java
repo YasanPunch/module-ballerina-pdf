@@ -1,6 +1,11 @@
 package io.ballerina.lib.pdf.layout;
 
-import io.ballerina.lib.pdf.box.*;
+import io.ballerina.lib.pdf.box.Box;
+import io.ballerina.lib.pdf.box.TableBox;
+import io.ballerina.lib.pdf.box.TableCellBox;
+import io.ballerina.lib.pdf.box.TableRowBox;
+import io.ballerina.lib.pdf.box.TableRowGroupBox;
+import io.ballerina.lib.pdf.box.TextRun;
 import io.ballerina.lib.pdf.css.ComputedStyle;
 import io.ballerina.lib.pdf.paint.FontManager;
 import io.ballerina.lib.pdf.util.CssValueParser;
@@ -212,6 +217,18 @@ public class TableLayoutEngine {
             if (child instanceof TableCellBox cell) {
                 float cellMax = measureBoxContentWidth(cell);
                 float cellMin = measureMinContentWidth(cell);
+
+                // CSS width (mapped from HTML `width` attribute or CSS rule) acts as a preferred
+                // column width floor. Per CSS 2.1 §17.5.2: if width != auto, it is the minimum
+                // max-content width for that column. This is what browsers and iText/Flying Saucer do.
+                String cssWidthStr = cell.getStyle() != null ? cell.getStyle().get("width") : null;
+                if (cssWidthStr != null && !cssWidthStr.equals("auto")) {
+                    float cssW = CssValueParser.toPoints(cssWidthStr);
+                    if (cssW > 0) {
+                        cellMax = Math.max(cellMax, cssW);
+                    }
+                }
+
                 int colspan = cell.getColspan();
 
                 if (colspan == 1 && colIdx < numCols) {
@@ -419,22 +436,51 @@ public class TableLayoutEngine {
     }
 
     /**
-     * Counts columns by scanning ALL rows and returning the maximum.
+     * Counts columns by scanning rows. Uses actual cell count (not colspan expansion)
+     * to determine the column count: if all rows have a single cell (regardless of
+     * their colspan attribute), the table is treated as single-column. This prevents
+     * tables where spacer/footer rows use colspan > 1 from being incorrectly split
+     * into multiple equal-width columns.
      */
     private int countColumnsFromRows(TableBox table) {
-        int max = 0;
+        int maxActualCells = 0;          // max number of <td> elements in any row
+        int maxColspanMultiCell = 0;     // max colspan sum from rows with multiple cells
+
         for (Box child : table.getChildren()) {
             if (child instanceof TableRowBox row) {
-                max = Math.max(max, countCellColumns(row));
+                int cells = countActualCells(row);
+                maxActualCells = Math.max(maxActualCells, cells);
+                if (cells > 1) {
+                    maxColspanMultiCell = Math.max(maxColspanMultiCell, countCellColumns(row));
+                }
             } else if (child instanceof TableRowGroupBox group) {
                 for (Box gc : group.getChildren()) {
                     if (gc instanceof TableRowBox row) {
-                        max = Math.max(max, countCellColumns(row));
+                        int cells = countActualCells(row);
+                        maxActualCells = Math.max(maxActualCells, cells);
+                        if (cells > 1) {
+                            maxColspanMultiCell = Math.max(maxColspanMultiCell, countCellColumns(row));
+                        }
                     }
                 }
             }
         }
-        return max;
+
+        // If all rows have a single cell (spanning or not), treat as 1-column table.
+        if (maxActualCells <= 1) {
+            return 1;
+        }
+        return maxColspanMultiCell > 0 ? maxColspanMultiCell : maxActualCells;
+    }
+
+    private int countActualCells(TableRowBox row) {
+        int count = 0;
+        for (Box child : row.getChildren()) {
+            if (child instanceof TableCellBox) {
+                count++;
+            }
+        }
+        return count;
     }
 
     private int countCellColumns(TableRowBox row) {

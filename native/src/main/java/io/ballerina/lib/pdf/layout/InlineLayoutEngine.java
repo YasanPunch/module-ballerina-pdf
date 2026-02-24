@@ -1,6 +1,11 @@
 package io.ballerina.lib.pdf.layout;
 
-import io.ballerina.lib.pdf.box.*;
+import io.ballerina.lib.pdf.box.BlockBox;
+import io.ballerina.lib.pdf.box.Box;
+import io.ballerina.lib.pdf.box.BrBox;
+import io.ballerina.lib.pdf.box.InlineBox;
+import io.ballerina.lib.pdf.box.ReplacedBox;
+import io.ballerina.lib.pdf.box.TextRun;
 import io.ballerina.lib.pdf.css.ComputedStyle;
 import io.ballerina.lib.pdf.paint.FontManager;
 import io.ballerina.lib.pdf.util.CssValueParser;

@@ -52,7 +52,6 @@ public final class Native {
             Map<String, byte[]> customFonts = null;
             Object customFontsObj = options.get(StringUtils.fromString("customFonts"));
             if (customFontsObj instanceof BMap) {
-                @SuppressWarnings("unchecked")
                 BMap<BString, Object> fontsMap = (BMap<BString, Object>) customFontsObj;
                 customFonts = new HashMap<>();
                 for (BString key : fontsMap.getKeys()) {

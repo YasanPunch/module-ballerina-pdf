@@ -9,7 +9,10 @@ import io.ballerina.lib.pdf.css.StyleResolver;
 import io.ballerina.lib.pdf.layout.BlockFormattingContext;
 import io.ballerina.lib.pdf.layout.LayoutContext;
 import io.ballerina.lib.pdf.layout.PageBreaker;
-import io.ballerina.lib.pdf.paint.*;
+import io.ballerina.lib.pdf.paint.FontManager;
+import io.ballerina.lib.pdf.paint.ImageDecoder;
+import io.ballerina.lib.pdf.paint.PdfPageManager;
+import io.ballerina.lib.pdf.paint.PdfPainter;
 import org.apache.pdfbox.pdmodel.PDDocument;
 
 import java.io.ByteArrayOutputStream;

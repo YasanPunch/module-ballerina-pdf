@@ -1,6 +1,10 @@
 package io.ballerina.lib.pdf.layout;
 
-import io.ballerina.lib.pdf.box.*;
+import io.ballerina.lib.pdf.box.BlockBox;
+import io.ballerina.lib.pdf.box.Box;
+import io.ballerina.lib.pdf.box.TableBox;
+import io.ballerina.lib.pdf.box.TableRowBox;
+import io.ballerina.lib.pdf.box.TableRowGroupBox;
 
 import java.util.ArrayList;
 import java.util.List;

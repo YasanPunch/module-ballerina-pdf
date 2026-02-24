@@ -2,7 +2,6 @@ package io.ballerina.lib.pdf.css;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 /**
  * A parsed stylesheet: collection of rules + @page declarations.

@@ -4,7 +4,12 @@ import io.ballerina.lib.pdf.util.DomUtils;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.IdentityHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -534,6 +539,19 @@ public class StyleResolver {
                 height = height + "px";
             }
             style.set("height", height);
+        }
+
+        // width attribute on td/th — maps to CSS width (HTML presentational attribute).
+        // Browsers respect this as a column sizing hint; without it, column widths are
+        // computed purely from max-content text, producing misaligned columns between
+        // sibling tables that share a visual layout (e.g. header+data rows in separate tables).
+        if ((tagName.equals("td") || tagName.equals("th")) && style.get("width") == null) {
+            String widthAttr = DomUtils.attr(element, "width");
+            if (widthAttr != null) {
+                // Normalize bare numbers to px (e.g., width="150" → "150px")
+                if (widthAttr.matches("\\d+(\\.\\d+)?")) widthAttr = widthAttr + "px";
+                style.set("width", widthAttr);
+            }
         }
 
         // Default table cells to left-align (HTML5 UA stylesheet: td { text-align: start }).
