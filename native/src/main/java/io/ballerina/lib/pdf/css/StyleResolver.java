@@ -1,3 +1,21 @@
+/*
+ * Copyright (c) 2026, WSO2 LLC. (http://www.wso2.com).
+ *
+ * WSO2 LLC. licenses this file to you under the Apache License,
+ * Version 2.0 (the "License"); you may not use this file except
+ * in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
 package io.ballerina.lib.pdf.css;
 
 import io.ballerina.lib.pdf.util.DomUtils;
@@ -175,7 +193,7 @@ public class StyleResolver {
         Node parent = element.getParentNode();
         if (parent != null && parent.getNodeType() == Node.ELEMENT_NODE) {
             ComputedStyle parentStyle = resolve((Element) parent);
-            for (String prop : ComputedStyle.isInheritedProperties()) {
+            for (String prop : ComputedStyle.getInheritedProperties()) {
                 if (style.get(prop) == null || "inherit".equals(style.get(prop))) {
                     String parentVal = parentStyle.get(prop);
                     if (parentVal != null) {
@@ -212,6 +230,17 @@ public class StyleResolver {
     }
 
     private void expandFourSided(ComputedStyle style, String prefix, String value) {
+        expandFourSidedProperty(style, value, prefix + "-top", prefix + "-right",
+                prefix + "-bottom", prefix + "-left");
+    }
+
+    /**
+     * Generic four-sided expansion: splits value on whitespace and assigns to 4 property names
+     * using CSS shorthand rules (1→all, 2→vert/horiz, 3→top/horiz/bottom, 4→each).
+     */
+    private void expandFourSidedProperty(ComputedStyle style, String value,
+                                          String topProp, String rightProp,
+                                          String bottomProp, String leftProp) {
         String[] parts = value.trim().split("\\s+");
         String top, right, bottom, left;
         switch (parts.length) {
@@ -220,10 +249,10 @@ public class StyleResolver {
             case 3 -> { top = parts[0]; right = left = parts[1]; bottom = parts[2]; }
             default -> { top = parts[0]; right = parts[1]; bottom = parts[2]; left = parts[3]; }
         }
-        style.set(prefix + "-top", top);
-        style.set(prefix + "-right", right);
-        style.set(prefix + "-bottom", bottom);
-        style.set(prefix + "-left", left);
+        style.set(topProp, top);
+        style.set(rightProp, right);
+        style.set(bottomProp, bottom);
+        style.set(leftProp, left);
     }
 
     private void expandBorder(ComputedStyle style, String value, String... sides) {
@@ -265,33 +294,13 @@ public class StyleResolver {
     }
 
     private void expandFourSidedBorderWidth(ComputedStyle style, String value) {
-        String[] parts = value.trim().split("\\s+");
-        String top, right, bottom, left;
-        switch (parts.length) {
-            case 1 -> { top = right = bottom = left = parts[0]; }
-            case 2 -> { top = bottom = parts[0]; right = left = parts[1]; }
-            case 3 -> { top = parts[0]; right = left = parts[1]; bottom = parts[2]; }
-            default -> { top = parts[0]; right = parts[1]; bottom = parts[2]; left = parts[3]; }
-        }
-        style.set("border-top-width", top);
-        style.set("border-right-width", right);
-        style.set("border-bottom-width", bottom);
-        style.set("border-left-width", left);
+        expandFourSidedProperty(style, value, "border-top-width", "border-right-width",
+                "border-bottom-width", "border-left-width");
     }
 
     private void expandFourSidedBorderStyle(ComputedStyle style, String value) {
-        String[] parts = value.trim().split("\\s+");
-        String top, right, bottom, left;
-        switch (parts.length) {
-            case 1 -> { top = right = bottom = left = parts[0]; }
-            case 2 -> { top = bottom = parts[0]; right = left = parts[1]; }
-            case 3 -> { top = parts[0]; right = left = parts[1]; bottom = parts[2]; }
-            default -> { top = parts[0]; right = parts[1]; bottom = parts[2]; left = parts[3]; }
-        }
-        style.set("border-top-style", top);
-        style.set("border-right-style", right);
-        style.set("border-bottom-style", bottom);
-        style.set("border-left-style", left);
+        expandFourSidedProperty(style, value, "border-top-style", "border-right-style",
+                "border-bottom-style", "border-left-style");
     }
 
     private void expandFourSidedBorderColor(ComputedStyle style, String value) {

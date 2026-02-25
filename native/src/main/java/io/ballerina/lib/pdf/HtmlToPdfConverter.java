@@ -1,3 +1,21 @@
+/*
+ * Copyright (c) 2026, WSO2 LLC. (http://www.wso2.com).
+ *
+ * WSO2 LLC. licenses this file to you under the Apache License,
+ * Version 2.0 (the "License"); you may not use this file except
+ * in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
 package io.ballerina.lib.pdf;
 
 import io.ballerina.lib.pdf.box.BlockBox;
@@ -9,14 +27,10 @@ import io.ballerina.lib.pdf.css.StyleResolver;
 import io.ballerina.lib.pdf.layout.BlockFormattingContext;
 import io.ballerina.lib.pdf.layout.LayoutContext;
 import io.ballerina.lib.pdf.layout.PageBreaker;
-import io.ballerina.lib.pdf.paint.FontManager;
-import io.ballerina.lib.pdf.paint.ImageDecoder;
-import io.ballerina.lib.pdf.paint.PdfPageManager;
-import io.ballerina.lib.pdf.paint.PdfPainter;
+import io.ballerina.lib.pdf.paint.*;
 import org.apache.pdfbox.pdmodel.PDDocument;
 
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -35,30 +49,30 @@ public class HtmlToPdfConverter {
     /**
      * Convert a preprocessed W3C DOM Document to PDF bytes.
      */
-    public byte[] parseHtml(org.w3c.dom.Document document) throws Exception {
-        return parseHtml(document, new ConverterOptions());
+    public byte[] convert(org.w3c.dom.Document document) throws Exception {
+        return convert(document, new ConverterOptions());
     }
 
     /**
      * Convert a preprocessed W3C DOM Document to PDF bytes with custom options.
      */
-    public byte[] parseHtml(org.w3c.dom.Document document, ConverterOptions options) throws Exception {
+    public byte[] convert(org.w3c.dom.Document document, ConverterOptions options) throws Exception {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        parseHtml(document, baos, options);
+        convert(document, baos, options);
         return baos.toByteArray();
     }
 
     /**
      * Convert a preprocessed W3C DOM Document to PDF, writing to the given stream.
      */
-    public void parseHtml(org.w3c.dom.Document document, OutputStream outputStream) throws Exception {
-        parseHtml(document, outputStream, new ConverterOptions());
+    public void convert(org.w3c.dom.Document document, OutputStream outputStream) throws Exception {
+        convert(document, outputStream, new ConverterOptions());
     }
 
     /**
      * Convert a preprocessed W3C DOM Document to PDF with custom options, writing to the given stream.
      */
-    public void parseHtml(org.w3c.dom.Document document, OutputStream outputStream,
+    public void convert(org.w3c.dom.Document document, OutputStream outputStream,
                               ConverterOptions options) throws Exception {
         try (PDDocument pdfDoc = new PDDocument()) {
 
@@ -97,7 +111,7 @@ public class HtmlToPdfConverter {
             float scale = 1.0f;
             Integer maxPages = options.getMaxPages();
             if (maxPages != null && pages.size() > maxPages) {
-                float totalHeight = computeVisualHeight(root);
+                float totalHeight = PageBreaker.computeVisualHeight(root);
                 float targetHeight = maxPages * layoutContext.getContentHeight();
                 scale = targetHeight / totalHeight;
                 // Re-slice into maxPages even pages
@@ -150,21 +164,4 @@ public class HtmlToPdfConverter {
         }
     }
 
-    /**
-     * Computes the actual visual height of the root box by examining child positions.
-     * When CSS parent-child margin collapsing is active, the root's content height may not
-     * include the first child's collapsed top margin, but the painter still offsets children
-     * by their margin values. This method computes the true extent that the painter will render.
-     */
-    private float computeVisualHeight(Box root) {
-        float maxChildBottom = 0;
-        for (Box child : root.getEffectiveChildren()) {
-            float childTop = child.getY() + child.getMarginTop();
-            float childBottom = childTop + child.getBorderBoxHeight() + child.getMarginBottom();
-            maxChildBottom = Math.max(maxChildBottom, childBottom);
-        }
-        return root.getBorderTopWidth() + root.getPaddingTop()
-                + maxChildBottom
-                + root.getPaddingBottom() + root.getBorderBottomWidth();
-    }
 }

@@ -1,26 +1,57 @@
-# Ballerina Pdf connector
+# Ballerina PDF Module
 
 [![Build](https://github.com/ballerina-platform/module-ballerina-pdf/actions/workflows/ci.yml/badge.svg)](https://github.com/ballerina-platform/module-ballerina-pdf/actions/workflows/ci.yml)
-[![GitHub Last Commit](https://img.shields.io/github/last-commit/ballerina-platform/module-ballerina-pdf.svg)](https://github.com/ballerina-platform/module-ballerina-pdf/commits/master)
-[![GitHub Issues](https://img.shields.io/github/issues/ballerina-platform/ballerina-library/module/pdf.svg?label=Open%20Issues)](https://github.com/ballerina-platform/ballerina-library/labels/module%pdf)
+[![GitHub Last Commit](https://img.shields.io/github/last-commit/ballerina-platform/module-ballerina-pdf.svg)](https://github.com/ballerina-platform/module-ballerina-pdf/commits/main)
+[![GitHub Issues](https://img.shields.io/github/issues/ballerina-platform/ballerina-library/module/pdf.svg?label=Open%20Issues)](https://github.com/ballerina-platform/ballerina-library/labels/module%2Fpdf)
 
 ## Overview
 
-[//]: # (TODO: Add overview mentioning the purpose of the module, supported REST API versions, and other high-level details.)
+The `ballerina/pdf` module provides functionality for working with PDF documents in Ballerina. It supports:
 
-## Setup guide
+- **HTML-to-PDF conversion** — Convert HTML content to PDF with configurable page sizes, margins, fonts, and CSS styling
+- **Text extraction** — Extract text content from existing PDF documents (from bytes, files, or URLs)
+- **Image export** — Convert PDF pages to Base64-encoded PNG images
 
-[//]: # (TODO: Add detailed steps to obtain credentials and configure the module.)
+All processing is performed locally — no external cloud services are used.
 
 ## Quickstart
 
-[//]: # (TODO: Add a quickstart guide to demonstrate a basic functionality of the module, including sample code snippets.)
+### Convert HTML to PDF
+
+```ballerina
+import ballerina/pdf;
+import ballerina/io;
+
+public function main() returns error? {
+    byte[] pdfBytes = check pdf:parseHtml(string `
+        <html>
+        <body>
+            <h1>Hello, World!</h1>
+            <p>This is a PDF generated from HTML.</p>
+        </body>
+        </html>
+    `);
+    check io:fileWriteBytes("output.pdf", pdfBytes);
+}
+```
+
+### Extract text from a PDF
+
+```ballerina
+import ballerina/pdf;
+import ballerina/io;
+
+public function main() returns error? {
+    string[] pages = check pdf:extractTextFromFile("document.pdf");
+    foreach string page in pages {
+        io:println(page);
+    }
+}
+```
 
 ## Examples
 
-The `Pdf` connector provides practical examples illustrating usage in various scenarios. Explore these [examples](https://github.com/module-ballerina-pdf/tree/main/examples/), covering the following use cases:
-
-[//]: # (TODO: Add examples)
+The `ballerina/pdf` module provides practical examples illustrating usage in various scenarios. Explore these [examples](https://github.com/ballerina-platform/module-ballerina-pdf/tree/main/examples/).
 
 ## Build from the source
 
@@ -110,7 +141,7 @@ All the contributors are encouraged to read the [Ballerina Code of Conduct](http
 
 ## Useful links
 
-* For more information go to the [`pdf` package](https://central.ballerina.io/ballerinax/pdf/latest).
+* For more information go to the [`pdf` package](https://central.ballerina.io/ballerina/pdf/latest).
 * For example demonstrations of the usage, go to [Ballerina By Examples](https://ballerina.io/learn/by-example/).
 * Chat live with us via our [Discord server](https://discord.gg/ballerinalang).
 * Post all technical questions on Stack Overflow with the [#ballerina](https://stackoverflow.com/questions/tagged/ballerina) tag.

@@ -1,3 +1,21 @@
+/*
+ * Copyright (c) 2026, WSO2 LLC. (http://www.wso2.com).
+ *
+ * WSO2 LLC. licenses this file to you under the Apache License,
+ * Version 2.0 (the "License"); you may not use this file except
+ * in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
 package io.ballerina.lib.pdf.layout;
 
 import io.ballerina.lib.pdf.box.*;
@@ -11,6 +29,9 @@ import java.util.List;
  * resolves widths, and delegates inline/table layout to their engines.
  */
 public class BlockFormattingContext {
+
+    /** Tolerance for floating-point width comparisons during float placement. */
+    private static final float FLOAT_TOLERANCE = 0.01f;
 
     private final LayoutContext ctx;
     private final InlineLayoutEngine inlineEngine;
@@ -147,7 +168,7 @@ public class BlockFormattingContext {
         float placeY = cursorY;
         while (true) {
             float avail = getAvailableWidthAtY(placeY, containerWidth, activeFloats);
-            if (outerWidth <= avail + 0.01f) break;
+            if (outerWidth <= avail + FLOAT_TOLERANCE) break;
             // Drop below the lowest float that overlaps placeY
             float nextY = Float.MAX_VALUE;
             for (FloatBox f : activeFloats) {
@@ -289,18 +310,20 @@ public class BlockFormattingContext {
                 && !isTableCell
                 && container.getBorderBottomWidth() == 0 && container.getPaddingBottom() == 0
                 && (containerStyle.getHeight(0, 0) < 0); // height: auto
+        float[] state = {cursorY, pendingMarginBottom, isFirstChild ? 1f : 0f};
+
         for (Box child : orderedChildren) {
             // Handle floated children — floats don't participate in margin collapsing
             if (hasFloats && isFloated(child)) {
                 FloatBox fb = layoutFloatedChild((BlockBox) child, availableWidth,
-                        cursorY, activeFloats);
+                        state[0], activeFloats);
                 activeFloats.add(fb);
                 continue;
             }
 
             // Apply clear if specified
             if (hasFloats && child instanceof BlockBox bb && bb.getStyle() != null) {
-                cursorY = applyClear(bb.getStyle().getClear(), cursorY, activeFloats);
+                state[0] = applyClear(bb.getStyle().getClear(), state[0], activeFloats);
             }
 
             // Determine if this child participates in margin collapsing.
@@ -310,145 +333,28 @@ public class BlockFormattingContext {
                          && "inline-block".equals(bb2.getStyle().getDisplay()));
 
             if (child instanceof TableBox table) {
-                resolveBoxModelWithWidth(table, availableWidth);
-
-                ComputedStyle tableStyle = table.getStyle();
-                float tableFontSize = tableStyle != null ? tableStyle.getFontSize(ctx.getFontSizePt()) : ctx.getFontSizePt();
-                float tableContentWidth = availableWidth
-                        - table.getMarginLeft() - table.getMarginRight()
-                        - table.getBorderLeftWidth() - table.getBorderRightWidth()
-                        - table.getPaddingLeft() - table.getPaddingRight();
-
-                if (tableStyle != null) {
-                    float tMaxW = tableStyle.getMaxWidth(availableWidth, tableFontSize);
-                    float tMinW = tableStyle.getMinWidth(availableWidth, tableFontSize);
-                    tableContentWidth = Math.max(tMinW, Math.min(tableContentWidth, tMaxW));
-                }
-
-                // Collapse top margin with previous sibling's bottom margin
-                float effectiveMarginTop;
-                if (isFirstChild && collapseFirstChildTop && collapseMargins) {
-                    // Parent-first-child collapsing: margin collapses with parent's top margin
-                    effectiveMarginTop = 0;
-                } else if (!isFirstChild && collapseMargins) {
-                    effectiveMarginTop = Math.max(pendingMarginBottom, table.getMarginTop());
-                } else {
-                    effectiveMarginTop = (isFirstChild ? 0 : pendingMarginBottom) + table.getMarginTop();
-                }
-                cursorY += effectiveMarginTop;
-
-                // CSS 2.1 §10.3.3: center block with margin-left: auto and margin-right: auto
-                float tableXOffset = 0;
-                if (tableStyle != null && tableStyle.isMarginLeftAuto() && tableStyle.isMarginRightAuto()) {
-                    float totalOuter = tableContentWidth + table.getBorderLeftWidth() + table.getPaddingLeft()
-                            + table.getPaddingRight() + table.getBorderRightWidth();
-                    tableXOffset = Math.max(0, (availableWidth - totalOuter) / 2f);
-                }
-                table.setX(tableXOffset);
-                table.setY(cursorY - table.getMarginTop());
-
-                float tableHeight = tableEngine.layout(table, tableContentWidth);
-                table.setHeight(tableHeight);
-
-                cursorY += table.getBorderTopWidth() + table.getPaddingTop()
-                        + tableHeight
-                        + table.getPaddingBottom() + table.getBorderBottomWidth();
-
-                pendingMarginBottom = table.getMarginBottom();
-                isFirstChild = false;
-
-                if (tableStyle != null && "relative".equals(tableStyle.getPosition())) {
-                    applyRelativeOffset(table, availableWidth, tableHeight);
-                }
-
+                layoutTableChild(table, availableWidth, state,
+                        collapseFirstChildTop, collapseMargins);
             } else if (child instanceof BlockBox block) {
-                resolveBoxModelWithWidth(block, availableWidth);
-
-                ComputedStyle style = block.getStyle();
-                if (style == null) continue;
-                float explicitWidth = style.getWidth(availableWidth, ctx.getFontSizePt());
-                float blockWidth;
-                if (explicitWidth > 0) {
-                    blockWidth = Math.min(explicitWidth, availableWidth
-                            - block.getMarginLeft() - block.getMarginRight()
-                            - block.getBorderLeftWidth() - block.getBorderRightWidth()
-                            - block.getPaddingLeft() - block.getPaddingRight());
-                } else {
-                    blockWidth = availableWidth
-                            - block.getMarginLeft() - block.getMarginRight()
-                            - block.getBorderLeftWidth() - block.getBorderRightWidth()
-                            - block.getPaddingLeft() - block.getPaddingRight();
-                }
-                blockWidth = Math.max(0, blockWidth);
-
-                float fontSize = style.getFontSize(ctx.getFontSizePt());
-                float maxW = style.getMaxWidth(availableWidth, fontSize);
-                float minW = style.getMinWidth(availableWidth, fontSize);
-                blockWidth = Math.max(minW, Math.min(blockWidth, maxW));
-
-                // Collapse top margin with previous sibling's bottom margin
-                float effectiveMarginTop;
-                if (isFirstChild && collapseFirstChildTop && collapseMargins) {
-                    // Parent-first-child collapsing: margin collapses with parent's top margin
-                    effectiveMarginTop = 0;
-                } else if (!isFirstChild && collapseMargins) {
-                    effectiveMarginTop = Math.max(pendingMarginBottom, block.getMarginTop());
-                } else {
-                    effectiveMarginTop = (isFirstChild ? 0 : pendingMarginBottom) + block.getMarginTop();
-                }
-                cursorY += effectiveMarginTop;
-
-                // CSS 2.1 §10.3.3: center block with margin-left: auto and margin-right: auto.
-                // Applies when the block is narrower than the container (due to explicit width
-                // or max-width constraint) and both horizontal margins are auto.
-                float blockXOffset = 0;
-                float totalOuter = blockWidth + block.getBorderLeftWidth() + block.getPaddingLeft()
-                        + block.getPaddingRight() + block.getBorderRightWidth();
-                if (style.isMarginLeftAuto() && style.isMarginRightAuto()
-                        && totalOuter < availableWidth) {
-                    blockXOffset = (availableWidth - totalOuter) / 2f;
-                }
-                block.setX(blockXOffset);
-                block.setY(cursorY - block.getMarginTop());
-                block.setWidth(blockWidth);
-
-                float contentHeight = layoutChildren(block, blockWidth);
-                float explicitHeight = style.getHeight(contentHeight, fontSize);
-                if (explicitHeight > 0) {
-                    contentHeight = Math.max(contentHeight, explicitHeight);
-                }
-                float maxH = style.getMaxHeight(contentHeight, fontSize);
-                float minH = style.getMinHeight(contentHeight, fontSize);
-                contentHeight = Math.max(minH, Math.min(contentHeight, maxH));
-
-                block.setHeight(contentHeight);
-
-                cursorY += block.getBorderTopWidth() + block.getPaddingTop()
-                        + contentHeight
-                        + block.getPaddingBottom() + block.getBorderBottomWidth();
-
-                pendingMarginBottom = block.getMarginBottom();
-                isFirstChild = false;
-
-                if ("relative".equals(style.getPosition())) {
-                    applyRelativeOffset(block, availableWidth, contentHeight);
-                }
-
+                layoutBlockChild(block, availableWidth, state,
+                        collapseFirstChildTop, collapseMargins);
             } else {
                 // Inline content mixed with blocks — position at cursor
                 // Inline content resets margin collapsing
-                if (!isFirstChild) {
-                    cursorY += pendingMarginBottom;
+                if (state[2] == 0f) {
+                    state[0] += state[1];
                 }
-                pendingMarginBottom = 0;
-                isFirstChild = false;
+                state[1] = 0;
+                state[2] = 0f;
 
                 resolveBoxModelWithWidth(child, availableWidth);
                 child.setX(0);
-                child.setY(cursorY);
-                cursorY += child.getHeight() > 0 ? child.getHeight() : ctx.getFontSizePt() * 1.333f;
+                child.setY(state[0]);
+                state[0] += child.getHeight() > 0 ? child.getHeight() : ctx.getFontSizePt() * 1.333f;
             }
         }
+        cursorY = state[0];
+        pendingMarginBottom = state[1];
 
         // Flush any remaining pending bottom margin.
         // CSS 2.1 §8.3.1: if parent has no border-bottom/padding-bottom and height is auto,
@@ -470,6 +376,143 @@ public class BlockFormattingContext {
         }
 
         return cursorY;
+    }
+
+    /**
+     * Resolves effective top margin using CSS 2.1 §8.3.1 margin collapsing rules.
+     * @param childMarginTop the child's top margin
+     * @param state layout state: [0]=cursorY, [1]=pendingMarginBottom, [2]=isFirstChild (1=yes, 0=no)
+     * @param collapseFirstChildTop whether parent-first-child collapsing applies
+     * @param collapseMargins whether this child participates in margin collapsing
+     */
+    private float resolveEffectiveMarginTop(float childMarginTop, float[] state,
+                                             boolean collapseFirstChildTop, boolean collapseMargins) {
+        boolean isFirst = state[2] != 0f;
+        float pendingMarginBottom = state[1];
+        if (isFirst && collapseFirstChildTop && collapseMargins) {
+            return 0;
+        } else if (!isFirst && collapseMargins) {
+            return Math.max(pendingMarginBottom, childMarginTop);
+        } else {
+            return (isFirst ? 0 : pendingMarginBottom) + childMarginTop;
+        }
+    }
+
+    /**
+     * Lays out a table child in block context.
+     * @param state layout state: [0]=cursorY, [1]=pendingMarginBottom, [2]=isFirstChild
+     */
+    private void layoutTableChild(TableBox table, float availableWidth, float[] state,
+                                   boolean collapseFirstChildTop, boolean collapseMargins) {
+        resolveBoxModelWithWidth(table, availableWidth);
+
+        ComputedStyle tableStyle = table.getStyle();
+        float tableFontSize = tableStyle != null ? tableStyle.getFontSize(ctx.getFontSizePt()) : ctx.getFontSizePt();
+        float tableContentWidth = availableWidth
+                - table.getMarginLeft() - table.getMarginRight()
+                - table.getBorderLeftWidth() - table.getBorderRightWidth()
+                - table.getPaddingLeft() - table.getPaddingRight();
+
+        if (tableStyle != null) {
+            float tMaxW = tableStyle.getMaxWidth(availableWidth, tableFontSize);
+            float tMinW = tableStyle.getMinWidth(availableWidth, tableFontSize);
+            tableContentWidth = Math.max(tMinW, Math.min(tableContentWidth, tMaxW));
+        }
+
+        state[0] += resolveEffectiveMarginTop(table.getMarginTop(), state,
+                collapseFirstChildTop, collapseMargins);
+
+        // CSS 2.1 §10.3.3: center block with margin-left: auto and margin-right: auto
+        float tableXOffset = 0;
+        if (tableStyle != null && tableStyle.isMarginLeftAuto() && tableStyle.isMarginRightAuto()) {
+            float totalOuter = tableContentWidth + table.getBorderLeftWidth() + table.getPaddingLeft()
+                    + table.getPaddingRight() + table.getBorderRightWidth();
+            tableXOffset = Math.max(0, (availableWidth - totalOuter) / 2f);
+        }
+        table.setX(tableXOffset);
+        table.setY(state[0] - table.getMarginTop());
+
+        float tableHeight = tableEngine.layout(table, tableContentWidth);
+        table.setHeight(tableHeight);
+
+        state[0] += table.getBorderTopWidth() + table.getPaddingTop()
+                + tableHeight
+                + table.getPaddingBottom() + table.getBorderBottomWidth();
+
+        state[1] = table.getMarginBottom();
+        state[2] = 0f;
+
+        if (tableStyle != null && "relative".equals(tableStyle.getPosition())) {
+            applyRelativeOffset(table, availableWidth, tableHeight);
+        }
+    }
+
+    /**
+     * Lays out a block-level child in block context.
+     * @param state layout state: [0]=cursorY, [1]=pendingMarginBottom, [2]=isFirstChild
+     */
+    private void layoutBlockChild(BlockBox block, float availableWidth, float[] state,
+                                   boolean collapseFirstChildTop, boolean collapseMargins) {
+        resolveBoxModelWithWidth(block, availableWidth);
+
+        ComputedStyle style = block.getStyle();
+        if (style == null) return;
+        float explicitWidth = style.getWidth(availableWidth, ctx.getFontSizePt());
+        float blockWidth;
+        if (explicitWidth > 0) {
+            blockWidth = Math.min(explicitWidth, availableWidth
+                    - block.getMarginLeft() - block.getMarginRight()
+                    - block.getBorderLeftWidth() - block.getBorderRightWidth()
+                    - block.getPaddingLeft() - block.getPaddingRight());
+        } else {
+            blockWidth = availableWidth
+                    - block.getMarginLeft() - block.getMarginRight()
+                    - block.getBorderLeftWidth() - block.getBorderRightWidth()
+                    - block.getPaddingLeft() - block.getPaddingRight();
+        }
+        blockWidth = Math.max(0, blockWidth);
+
+        float fontSize = style.getFontSize(ctx.getFontSizePt());
+        float maxW = style.getMaxWidth(availableWidth, fontSize);
+        float minW = style.getMinWidth(availableWidth, fontSize);
+        blockWidth = Math.max(minW, Math.min(blockWidth, maxW));
+
+        state[0] += resolveEffectiveMarginTop(block.getMarginTop(), state,
+                collapseFirstChildTop, collapseMargins);
+
+        // CSS 2.1 §10.3.3: center block with margin-left: auto and margin-right: auto
+        float blockXOffset = 0;
+        float totalOuter = blockWidth + block.getBorderLeftWidth() + block.getPaddingLeft()
+                + block.getPaddingRight() + block.getBorderRightWidth();
+        if (style.isMarginLeftAuto() && style.isMarginRightAuto()
+                && totalOuter < availableWidth) {
+            blockXOffset = (availableWidth - totalOuter) / 2f;
+        }
+        block.setX(blockXOffset);
+        block.setY(state[0] - block.getMarginTop());
+        block.setWidth(blockWidth);
+
+        float contentHeight = layoutChildren(block, blockWidth);
+        float explicitHeight = style.getHeight(contentHeight, fontSize);
+        if (explicitHeight > 0) {
+            contentHeight = Math.max(contentHeight, explicitHeight);
+        }
+        float maxH = style.getMaxHeight(contentHeight, fontSize);
+        float minH = style.getMinHeight(contentHeight, fontSize);
+        contentHeight = Math.max(minH, Math.min(contentHeight, maxH));
+
+        block.setHeight(contentHeight);
+
+        state[0] += block.getBorderTopWidth() + block.getPaddingTop()
+                + contentHeight
+                + block.getPaddingBottom() + block.getBorderBottomWidth();
+
+        state[1] = block.getMarginBottom();
+        state[2] = 0f;
+
+        if ("relative".equals(style.getPosition())) {
+            applyRelativeOffset(block, availableWidth, contentHeight);
+        }
     }
 
     /**
