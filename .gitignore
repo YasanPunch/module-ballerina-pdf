@@ -53,3 +53,8 @@ build
 
 # Ignore Docker env file
 docker.env
+
+# Test-generated temp files
+ballerina/tests/resources/test_output.pdf
+ballerina/tests/resources/test_images.pdf
+examples/comprehensive-html-tests/output/

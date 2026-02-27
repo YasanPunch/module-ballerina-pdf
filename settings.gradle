@@ -29,8 +29,10 @@ plugins {
 
 rootProject.name = 'module-ballerina-pdf'
 
+include ':pdf-native'
 include ':pdf-ballerina'
 
+project(':pdf-native').projectDir = file("native")
 project(':pdf-ballerina').projectDir = file("ballerina")
 
 gradleEnterprise {

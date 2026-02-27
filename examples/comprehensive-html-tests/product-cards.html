@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>TechGear Pro — Product Catalog</title>
+<style>
+  body {
+    font-family: 'Liberation Sans', Arial, sans-serif;
+    font-size: 13px;
+    color: #333;
+    margin: 0;
+    padding: 20px;
+    background-color: #f5f5f5;
+  }
+
+  /* Page header */
+  .page-header {
+    text-align: center;
+    padding: 20px 0;
+    margin-bottom: 25px;
+  }
+
+  .page-header h1 {
+    font-size: 28px;
+    color: #1a1a2e;
+    margin-bottom: 5px;
+    letter-spacing: 1px;
+  }
+
+  .page-header p {
+    color: #777;
+    font-size: 14px;
+  }
+
+  /* Category label */
+  .category-label {
+    font-size: 18px;
+    font-weight: bold;
+    color: #2d3748;
+    border-bottom: 2px solid #e94560;
+    padding-bottom: 6px;
+    margin-bottom: 20px;
+    margin-top: 30px;
+  }
+
+  /* Card container */
+  .cards-row {
+    margin-bottom: 20px;
+  }
+
+  .cards-row::after {
+    content: "";
+    display: block;
+    clear: both;
+  }
+
+  /* Individual card */
+  .card {
+    display: inline-block;
+    width: 220px;
+    margin-right: 15px;
+    margin-bottom: 15px;
+    background-color: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+    vertical-align: top;
+  }
+
+  /* Card image area */
+  .card-image {
+    background-color: #f0f0f0;
+    border-radius: 8px 8px 0 0;
+    padding: 15px;
+    text-align: center;
+    min-height: 60px;
+  }
+
+  .card-image img {
+    max-width: 100%;
+  }
+
+  /* Sale badge */
+  .sale-badge {
+    display: inline-block;
+    background-color: #e53e3e;
+    color: white;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 10px;
+    font-weight: bold;
+    text-transform: uppercase;
+    margin-bottom: 5px;
+  }
+
+  /* New badge */
+  .new-badge {
+    display: inline-block;
+    background-color: #38a169;
+    color: white;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 10px;
+    font-weight: bold;
+    text-transform: uppercase;
+    margin-bottom: 5px;
+  }
+
+  /* Card body */
+  .card-body {
+    padding: 12px 15px;
+  }
+
+  .card-title {
+    font-size: 14px;
+    font-weight: bold;
+    color: #1a1a2e;
+    margin-bottom: 4px;
+    min-height: 18px;
+  }
+
+  .card-subtitle {
+    font-size: 11px;
+    color: #999;
+    margin-bottom: 8px;
+  }
+
+  .card-description {
+    font-size: 11px;
+    color: #666;
+    line-height: 1.5;
+    margin-bottom: 10px;
+    min-height: 35px;
+  }
+
+  /* Star ratings */
+  .card-rating {
+    font-size: 12px;
+    color: #f6ad55;
+    margin-bottom: 6px;
+  }
+
+  .card-rating .count {
+    color: #999;
+    font-size: 10px;
+  }
+
+  /* Price */
+  .card-price {
+    font-size: 18px;
+    font-weight: bold;
+    color: #e94560;
+    margin-bottom: 4px;
+  }
+
+  .card-price .original {
+    font-size: 12px;
+    color: #999;
+    text-decoration: line-through;
+    margin-left: 6px;
+    font-weight: normal;
+  }
+
+  .card-price .save {
+    font-size: 10px;
+    color: #38a169;
+    font-weight: normal;
+  }
+
+  /* Availability */
+  .card-availability {
+    font-size: 10px;
+    margin-bottom: 8px;
+  }
+
+  .in-stock {
+    color: #38a169;
+    font-weight: bold;
+  }
+
+  .low-stock {
+    color: #dd6b20;
+    font-weight: bold;
+  }
+
+  .out-of-stock {
+    color: #e53e3e;
+    font-weight: bold;
+  }
+
+  .card-unavailable {
+    background-color: #e2e8f0;
+  }
+
+  /* Card footer with button */
+  .card-footer {
+    padding: 0 15px 15px 15px;
+  }
+
+  .btn {
+    display: block;
+    width: 100%;
+    padding: 8px;
+    text-align: center;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .btn-primary {
+    background-color: #4299e1;
+    color: white;
+    border: none;
+  }
+
+  .btn-secondary {
+    background-color: #e2e8f0;
+    color: #4a5568;
+    border: none;
+  }
+
+  .btn-disabled {
+    background-color: #edf2f7;
+    color: #a0aec0;
+    border: none;
+  }
+
+  /* Feature tags */
+  .feature-tags {
+    margin-bottom: 8px;
+  }
+
+  .feature-tag {
+    display: inline-block;
+    background-color: #ebf8ff;
+    color: #2b6cb0;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 9px;
+    margin-right: 3px;
+    margin-bottom: 3px;
+  }
+
+  /* Comparison table */
+  .comparison-section {
+    margin-top: 30px;
+  }
+
+  .comparison-table {
+    width: 100%;
+    border-collapse: collapse;
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  }
+
+  .comparison-table th {
+    background-color: #2d3748;
+    color: white;
+    padding: 10px 12px;
+    text-align: left;
+    font-size: 12px;
+  }
+
+  .comparison-table th:not(:first-child) {
+    text-align: center;
+  }
+
+  .comparison-table td {
+    padding: 8px 12px;
+    border-bottom: 1px solid #edf2f7;
+    font-size: 11px;
+  }
+
+  .comparison-table td:not(:first-child) {
+    text-align: center;
+  }
+
+  .comparison-table tbody tr:nth-child(even) {
+    background-color: #f7fafc;
+  }
+
+  .check {
+    color: #38a169;
+    font-weight: bold;
+  }
+
+  .cross {
+    color: #e53e3e;
+  }
+
+  /* Footer */
+  .catalog-footer {
+    text-align: center;
+    margin-top: 30px;
+    padding: 15px;
+    color: #a0aec0;
+    font-size: 10px;
+    border-top: 1px solid #e2e8f0;
+  }
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <h1>TechGear Pro</h1>
+  <p>Premium Technology Accessories — Winter 2024 Catalog</p>
+</div>
+
+<div class="category-label">Wireless Audio</div>
+
+<div class="cards-row">
+  <div class="card">
+    <div class="card-image">
+      <!-- Placeholder image: dark circle representing headphones -->
+      <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAAyCAIAAACRXR/mAAAATUlEQVR4nO3OMQEAMAgAoJn8aBcHRwUJ/B1nZr+27e4+RK1qVatadarW1KpWtapVp2pNrWpVq1p1qtbUqla1qlWnak2talWrWnWq1g9xEATX8ZkVcgAAAABJRU5ErkJggg==" width="50" height="50" />
+      <span class="sale-badge">-30%</span>
+    </div>
+    <div class="card-body">
+      <div class="card-title">AeroSound Pro X1</div>
+      <div class="card-subtitle">Over-Ear Noise Cancelling Headphones</div>
+      <div class="card-description">Premium ANC headphones with 40-hour battery, spatial audio, and adaptive transparency mode.</div>
+      <div class="feature-tags">
+        <span class="feature-tag">ANC</span>
+        <span class="feature-tag">Bluetooth 5.3</span>
+        <span class="feature-tag">Hi-Res</span>
+      </div>
+      <div class="card-rating">&#9733;&#9733;&#9733;&#9733;&#9733; <span class="count">(2,847)</span></div>
+      <div class="card-price">$249.99 <span class="original">$349.99</span><br /><span class="save">You save $100.00</span></div>
+      <div class="card-availability"><span class="in-stock">In Stock</span> — Ships within 24 hours</div>
+    </div>
+    <div class="card-footer">
+      <div class="btn btn-primary">Add to Cart</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-image">
+      <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAAyCAIAAACRXR/mAAAATUlEQVR4nO3OMQEAMAgAoJn8aBcHRwUJ/B1nZr+27e4+RK1qVatadarW1KpWtapVp2pNrWpVq1p1qtbUqla1qlWnak2talWrWnWq1g9xEATX8ZkVcgAAAABJRU5ErkJggg==" width="50" height="50" />
+      <span class="new-badge">New</span>
+    </div>
+    <div class="card-body">
+      <div class="card-title">SonicBuds Ultra</div>
+      <div class="card-subtitle">True Wireless Earbuds</div>
+      <div class="card-description">Compact earbuds with active noise cancellation, 8-hour playtime, and IPX5 water resistance.</div>
+      <div class="feature-tags">
+        <span class="feature-tag">ANC</span>
+        <span class="feature-tag">IPX5</span>
+        <span class="feature-tag">Wireless Charging</span>
+      </div>
+      <div class="card-rating">&#9733;&#9733;&#9733;&#9733;&#9734; <span class="count">(1,203)</span></div>
+      <div class="card-price">$179.99</div>
+      <div class="card-availability"><span class="in-stock">In Stock</span></div>
+    </div>
+    <div class="card-footer">
+      <div class="btn btn-primary">Add to Cart</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-image">
+      <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAAyCAIAAACRXR/mAAAATUlEQVR4nO3OMQEAMAgAoJn8aBcHRwUJ/B1nZr+27e4+RK1qVatadarW1KpWtapVp2pNrWpVq1p1qtbUqla1qlWnak2talWrWnWq1g9xEATX8ZkVcgAAAABJRU5ErkJggg==" width="50" height="50" />
+    </div>
+    <div class="card-body">
+      <div class="card-title">StudioMax Monitor</div>
+      <div class="card-subtitle">Professional Studio Headphones</div>
+      <div class="card-description">Open-back reference headphones for studio mixing and mastering. Flat frequency response 20Hz-40kHz.</div>
+      <div class="feature-tags">
+        <span class="feature-tag">Open-Back</span>
+        <span class="feature-tag">Studio</span>
+        <span class="feature-tag">Detachable Cable</span>
+      </div>
+      <div class="card-rating">&#9733;&#9733;&#9733;&#9733;&#9733; <span class="count">(892)</span></div>
+      <div class="card-price">$299.99</div>
+      <div class="card-availability"><span class="low-stock">Only 3 left</span> — Order soon</div>
+    </div>
+    <div class="card-footer">
+      <div class="btn btn-primary">Add to Cart</div>
+    </div>
+  </div>
+</div>
+
+<div class="category-label">Smart Home</div>
+
+<div class="cards-row">
+  <div class="card">
+    <div class="card-image">
+      <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAAyCAIAAACRXR/mAAAATUlEQVR4nO3OMQEAMAgAoJn8aBcHRwUJ/B1nZr+27e4+RK1qVatadarW1KpWtapVp2pNrWpVq1p1qtbUqla1qlWnak2talWrWnWq1g9xEATX8ZkVcgAAAABJRU5ErkJggg==" width="50" height="50" />
+    </div>
+    <div class="card-body">
+      <div class="card-title">HomeHub Central</div>
+      <div class="card-subtitle">Smart Home Controller</div>
+      <div class="card-description">Unified smart home hub supporting Zigbee, Z-Wave, Thread, and Matter. Control 200+ device brands from one app.</div>
+      <div class="feature-tags">
+        <span class="feature-tag">Matter</span>
+        <span class="feature-tag">Thread</span>
+        <span class="feature-tag">Voice Control</span>
+      </div>
+      <div class="card-rating">&#9733;&#9733;&#9733;&#9733;&#9734; <span class="count">(3,412)</span></div>
+      <div class="card-price">$129.99</div>
+      <div class="card-availability"><span class="in-stock">In Stock</span></div>
+    </div>
+    <div class="card-footer">
+      <div class="btn btn-primary">Add to Cart</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-image">
+      <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAAyCAIAAACRXR/mAAAATUlEQVR4nO3OMQEAMAgAoJn8aBcHRwUJ/B1nZr+27e4+RK1qVatadarW1KpWtapVp2pNrWpVq1p1qtbUqla1qlWnak2talWrWnWq1g9xEATX8ZkVcgAAAABJRU5ErkJggg==" width="50" height="50" />
+      <span class="sale-badge">-20%</span>
+    </div>
+    <div class="card-body">
+      <div class="card-title">LumiStrip RGB Pro</div>
+      <div class="card-subtitle">Smart LED Strip Light — 5 Meters</div>
+      <div class="card-description">Addressable RGBW LED strip with music sync, scene presets, and app/voice control. 16 million colors.</div>
+      <div class="feature-tags">
+        <span class="feature-tag">RGBW</span>
+        <span class="feature-tag">Music Sync</span>
+        <span class="feature-tag">WiFi</span>
+      </div>
+      <div class="card-rating">&#9733;&#9733;&#9733;&#9733;&#9734; <span class="count">(5,891)</span></div>
+      <div class="card-price">$39.99 <span class="original">$49.99</span></div>
+      <div class="card-availability"><span class="in-stock">In Stock</span></div>
+    </div>
+    <div class="card-footer">
+      <div class="btn btn-primary">Add to Cart</div>
+    </div>
+  </div>
+
+  <div class="card card-unavailable">
+    <div class="card-image">
+      <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAAyCAIAAACRXR/mAAAATUlEQVR4nO3OMQEAMAgAoJn8aBcHRwUJ/B1nZr+27e4+RK1qVatadarW1KpWtapVp2pNrWpVq1p1qtbUqla1qlWnak2talWrWnWq1g9xEATX8ZkVcgAAAABJRU5ErkJggg==" width="50" height="50" />
+    </div>
+    <div class="card-body">
+      <div class="card-title">AirSense Monitor</div>
+      <div class="card-subtitle">Indoor Air Quality Sensor</div>
+      <div class="card-description">Monitors PM2.5, CO2, VOC, temperature, and humidity. E-ink display with 2-year battery life.</div>
+      <div class="feature-tags">
+        <span class="feature-tag">E-Ink</span>
+        <span class="feature-tag">PM2.5</span>
+        <span class="feature-tag">CO2</span>
+      </div>
+      <div class="card-rating">&#9733;&#9733;&#9733;&#9733;&#9733; <span class="count">(724)</span></div>
+      <div class="card-price">$89.99</div>
+      <div class="card-availability"><span class="out-of-stock">Out of Stock</span> — Expected Feb 2025</div>
+    </div>
+    <div class="card-footer">
+      <div class="btn btn-disabled">Notify Me</div>
+    </div>
+  </div>
+</div>
+
+<!-- Comparison Table -->
+<div class="comparison-section">
+  <div class="category-label">Wireless Audio Comparison</div>
+
+  <table class="comparison-table">
+    <thead>
+      <tr>
+        <th>Feature</th>
+        <th>AeroSound Pro X1</th>
+        <th>SonicBuds Ultra</th>
+        <th>StudioMax Monitor</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Type</td>
+        <td>Over-Ear</td>
+        <td>True Wireless</td>
+        <td>Over-Ear (Open)</td>
+      </tr>
+      <tr>
+        <td>Active Noise Cancellation</td>
+        <td class="check">&#10003;</td>
+        <td class="check">&#10003;</td>
+        <td class="cross">&#10007;</td>
+      </tr>
+      <tr>
+        <td>Battery Life</td>
+        <td>40 hours</td>
+        <td>8 hours (32 with case)</td>
+        <td>Wired only</td>
+      </tr>
+      <tr>
+        <td>Bluetooth Version</td>
+        <td>5.3</td>
+        <td>5.3</td>
+        <td>N/A</td>
+      </tr>
+      <tr>
+        <td>Hi-Res Audio</td>
+        <td class="check">&#10003;</td>
+        <td class="cross">&#10007;</td>
+        <td class="check">&#10003;</td>
+      </tr>
+      <tr>
+        <td>Frequency Response</td>
+        <td>20Hz — 40kHz</td>
+        <td>20Hz — 20kHz</td>
+        <td>10Hz — 40kHz</td>
+      </tr>
+      <tr>
+        <td>Weight</td>
+        <td>254g</td>
+        <td>5.4g (each bud)</td>
+        <td>340g</td>
+      </tr>
+      <tr>
+        <td>Water Resistance</td>
+        <td class="cross">&#10007;</td>
+        <td>IPX5</td>
+        <td class="cross">&#10007;</td>
+      </tr>
+      <tr>
+        <td>Price</td>
+        <td><strong>$249.99</strong></td>
+        <td><strong>$179.99</strong></td>
+        <td><strong>$299.99</strong></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="catalog-footer">
+  <p>TechGear Pro — Premium Technology Accessories | Prices valid through March 31, 2025</p>
+  <p>All products come with a 30-day money-back guarantee and 2-year manufacturer warranty.</p>
+</div>
+
+</body>
+</html>

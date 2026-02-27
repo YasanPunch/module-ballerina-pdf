@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>SaaS Analytics Dashboard — January 2025</title>
+<style>
+  body {
+    font-family: 'Liberation Sans', Arial, sans-serif;
+    font-size: 12px;
+    color: #2d3748;
+    margin: 0;
+    padding: 20px;
+    background-color: #f7fafc;
+  }
+
+  /* Dashboard header */
+  .dashboard-header {
+    background-color: #1a202c;
+    color: white;
+    padding: 15px 20px;
+    margin-bottom: 20px;
+  }
+
+  .dashboard-header::after {
+    content: "";
+    display: block;
+    clear: both;
+  }
+
+  .dashboard-header h1 {
+    font-size: 20px;
+    margin: 0;
+    font-weight: bold;
+  }
+
+  .dashboard-header .subtitle {
+    font-size: 11px;
+    color: #a0aec0;
+    margin-top: 3px;
+  }
+
+  .dashboard-header .last-updated {
+    float: right;
+    font-size: 10px;
+    color: #718096;
+    text-align: right;
+  }
+
+  .dashboard-header .last-updated strong {
+    color: #a0aec0;
+  }
+
+  /* KPI Cards Row */
+  .kpi-row {
+    margin-bottom: 20px;
+  }
+
+  .kpi-row::after {
+    content: "";
+    display: block;
+    clear: both;
+  }
+
+  .kpi-card {
+    float: left;
+    width: 22%;
+    margin-right: 4%;
+    background-color: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    padding: 16px;
+  }
+
+  .kpi-card.border-blue { border-top: 4px solid #4299e1; }
+  .kpi-card.border-green { border-top: 4px solid #48bb78; }
+  .kpi-card.border-purple { border-top: 4px solid #9f7aea; }
+  .kpi-card.border-orange { border-top: 4px solid #ed8936; }
+
+  .kpi-card:last-child {
+    margin-right: 0;
+  }
+
+  .kpi-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #a0aec0;
+    margin-bottom: 6px;
+  }
+
+  .kpi-value {
+    font-size: 26px;
+    font-weight: bold;
+    color: #1a202c;
+    margin-bottom: 4px;
+  }
+
+  .kpi-change {
+    font-size: 11px;
+  }
+
+  .kpi-change.up {
+    color: #38a169;
+  }
+
+  .kpi-change.down {
+    color: #e53e3e;
+  }
+
+  /* Status indicator dot */
+  .status-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 4px;
+    margin-right: 4px;
+    vertical-align: middle;
+  }
+
+  .status-dot.green { background-color: #48bb78; }
+  .status-dot.yellow { background-color: #ecc94b; }
+  .status-dot.red { background-color: #fc8181; }
+
+  /* Accent colors removed — now using border-top on .kpi-card */
+
+  /* Two-column layout */
+  .two-col {
+    margin-bottom: 20px;
+  }
+
+  .two-col::after {
+    content: "";
+    display: block;
+    clear: both;
+  }
+
+  .col-left {
+    float: left;
+    width: 58%;
+    margin-right: 4%;
+  }
+
+  .col-right {
+    float: right;
+    width: 38%;
+  }
+
+  /* Panel / widget */
+  .panel {
+    background-color: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+  }
+
+  .panel-header {
+    padding: 12px 16px;
+    border-bottom: 1px solid #edf2f7;
+    font-size: 13px;
+    font-weight: bold;
+    color: #2d3748;
+  }
+
+  .panel-body {
+    padding: 16px;
+  }
+
+  /* Progress bars */
+  .progress-item {
+    margin-bottom: 12px;
+  }
+
+  .progress-label {
+    font-size: 11px;
+    color: #4a5568;
+    margin-bottom: 4px;
+  }
+
+  .progress-label .percentage {
+    float: right;
+    font-weight: bold;
+    color: #2d3748;
+  }
+
+  .progress-bar-bg {
+    background-color: #edf2f7;
+    border-radius: 4px;
+    height: 8px;
+  }
+
+  .progress-bar-fill {
+    height: 8px;
+    border-radius: 4px;
+  }
+
+  .fill-blue { background-color: #4299e1; }
+  .fill-green { background-color: #48bb78; }
+  .fill-purple { background-color: #9f7aea; }
+  .fill-orange { background-color: #ed8936; }
+  .fill-red { background-color: #fc8181; }
+
+  /* Data table inside panel */
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .data-table th {
+    text-align: left;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #a0aec0;
+    padding: 6px 8px;
+    border-bottom: 2px solid #edf2f7;
+  }
+
+  .data-table th:not(:first-child) {
+    text-align: right;
+  }
+
+  .data-table td {
+    padding: 8px;
+    font-size: 12px;
+    border-bottom: 1px solid #f7fafc;
+  }
+
+  .data-table td:not(:first-child) {
+    text-align: right;
+  }
+
+  .data-table tbody tr:nth-child(even) {
+    background-color: #f7fafc;
+  }
+
+  /* Health score circles (simplified as colored boxes) */
+  .health-grid {
+    display: block;
+  }
+
+  .health-item {
+    display: inline-block;
+    width: 45%;
+    margin-bottom: 12px;
+    margin-right: 3%;
+    vertical-align: top;
+  }
+
+  .health-score {
+    display: inline-block;
+    width: 40px;
+    height: 40px;
+    border-radius: 20px;
+    text-align: center;
+    line-height: 40px;
+    font-weight: bold;
+    font-size: 14px;
+    color: white;
+    margin-right: 8px;
+    vertical-align: middle;
+  }
+
+  .health-score.excellent { background-color: #48bb78; }
+  .health-score.good { background-color: #4299e1; }
+  .health-score.warning { background-color: #ecc94b; color: #744210; }
+  .health-score.critical { background-color: #fc8181; }
+
+  .health-details {
+    display: inline-block;
+    vertical-align: middle;
+  }
+
+  .health-name {
+    font-size: 12px;
+    font-weight: bold;
+    color: #2d3748;
+  }
+
+  .health-status {
+    font-size: 10px;
+    color: #718096;
+  }
+
+  /* Alert list */
+  .alert-item {
+    padding: 10px 12px;
+    border-left: 3px solid;
+    margin-bottom: 8px;
+    background-color: #f7fafc;
+    font-size: 11px;
+  }
+
+  .alert-item.alert-error {
+    border-left-color: #e53e3e;
+    background-color: #fff5f5;
+  }
+
+  .alert-item.alert-warning {
+    border-left-color: #dd6b20;
+    background-color: #fffaf0;
+  }
+
+  .alert-item.alert-info {
+    border-left-color: #4299e1;
+    background-color: #ebf8ff;
+  }
+
+  .alert-time {
+    font-size: 10px;
+    color: #a0aec0;
+    float: right;
+  }
+
+  .alert-title {
+    font-weight: bold;
+    color: #2d3748;
+    margin-bottom: 2px;
+  }
+
+  .alert-desc {
+    color: #718096;
+    font-size: 10px;
+  }
+
+  /* SLA breakdown */
+  .sla-row {
+    padding: 8px 0;
+    border-bottom: 1px solid #edf2f7;
+  }
+
+  .sla-row::after {
+    content: "";
+    display: block;
+    clear: both;
+  }
+
+  .sla-name {
+    float: left;
+    font-size: 12px;
+    color: #4a5568;
+  }
+
+  .sla-value {
+    float: right;
+    font-size: 12px;
+    font-weight: bold;
+  }
+
+  .sla-ok { color: #38a169; }
+  .sla-warn { color: #dd6b20; }
+  .sla-bad { color: #e53e3e; }
+
+  /* Footer */
+  .dashboard-footer {
+    text-align: center;
+    font-size: 10px;
+    color: #a0aec0;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid #e2e8f0;
+  }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="dashboard-header">
+  <div class="last-updated">
+    <strong>Last Updated</strong><br />
+    Feb 1, 2025 08:00 UTC
+  </div>
+  <h1>SaaS Platform Dashboard</h1>
+  <div class="subtitle">Monthly Performance Overview — January 2025</div>
+</div>
+
+<!-- KPI Cards -->
+<div class="kpi-row">
+  <div class="kpi-card border-blue">
+    <div class="kpi-label">Monthly Active Users</div>
+    <div class="kpi-value">284K</div>
+    <div class="kpi-change up">&#9650; 12.4% vs Dec</div>
+  </div>
+  <div class="kpi-card border-green">
+    <div class="kpi-label">Monthly Revenue</div>
+    <div class="kpi-value">$1.82M</div>
+    <div class="kpi-change up">&#9650; 8.7% vs Dec</div>
+  </div>
+  <div class="kpi-card border-purple">
+    <div class="kpi-label">Churn Rate</div>
+    <div class="kpi-value">2.1%</div>
+    <div class="kpi-change up">&#9660; 0.3pp vs Dec</div>
+  </div>
+  <div class="kpi-card border-orange">
+    <div class="kpi-label">Avg Response Time</div>
+    <div class="kpi-value">142ms</div>
+    <div class="kpi-change down">&#9650; 18ms vs Dec</div>
+  </div>
+</div>
+
+<!-- Two-column layout -->
+<div class="two-col">
+  <div class="col-left">
+    <!-- Revenue by Plan -->
+    <div class="panel">
+      <div class="panel-header">Revenue Breakdown by Plan</div>
+      <div class="panel-body">
+        <div class="progress-item">
+          <div class="progress-label">Enterprise ($89/user/mo) <span class="percentage">$892,400 (49%)</span></div>
+          <div class="progress-bar-bg"><div class="progress-bar-fill fill-blue" style="width: 49%;"></div></div>
+        </div>
+        <div class="progress-item">
+          <div class="progress-label">Professional ($39/user/mo) <span class="percentage">$546,000 (30%)</span></div>
+          <div class="progress-bar-bg"><div class="progress-bar-fill fill-purple" style="width: 30%;"></div></div>
+        </div>
+        <div class="progress-item">
+          <div class="progress-label">Starter ($19/user/mo) <span class="percentage">$291,200 (16%)</span></div>
+          <div class="progress-bar-bg"><div class="progress-bar-fill fill-green" style="width: 16%;"></div></div>
+        </div>
+        <div class="progress-item">
+          <div class="progress-label">Custom / Enterprise Plus <span class="percentage">$90,400 (5%)</span></div>
+          <div class="progress-bar-bg"><div class="progress-bar-fill fill-orange" style="width: 5%;"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Top Customers Table -->
+    <div class="panel">
+      <div class="panel-header">Top 10 Customers by ARR</div>
+      <div class="panel-body">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Customer</th>
+              <th>Plan</th>
+              <th>Users</th>
+              <th>ARR</th>
+              <th>Health</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Acme Corporation</strong></td>
+              <td>Enterprise+</td>
+              <td>2,450</td>
+              <td>$2.94M</td>
+              <td><span class="status-dot green"></span> Healthy</td>
+            </tr>
+            <tr>
+              <td><strong>GlobalTech Industries</strong></td>
+              <td>Enterprise</td>
+              <td>1,800</td>
+              <td>$1.92M</td>
+              <td><span class="status-dot green"></span> Healthy</td>
+            </tr>
+            <tr>
+              <td><strong>Nexus Financial</strong></td>
+              <td>Enterprise+</td>
+              <td>1,200</td>
+              <td>$1.68M</td>
+              <td><span class="status-dot yellow"></span> At Risk</td>
+            </tr>
+            <tr>
+              <td><strong>Meridian Health</strong></td>
+              <td>Enterprise</td>
+              <td>1,450</td>
+              <td>$1.55M</td>
+              <td><span class="status-dot green"></span> Healthy</td>
+            </tr>
+            <tr>
+              <td><strong>Pinnacle Retail</strong></td>
+              <td>Enterprise</td>
+              <td>980</td>
+              <td>$1.05M</td>
+              <td><span class="status-dot green"></span> Healthy</td>
+            </tr>
+            <tr>
+              <td><strong>Vertex Software</strong></td>
+              <td>Enterprise</td>
+              <td>920</td>
+              <td>$982K</td>
+              <td><span class="status-dot red"></span> Churning</td>
+            </tr>
+            <tr>
+              <td><strong>Atlas Logistics</strong></td>
+              <td>Professional</td>
+              <td>1,650</td>
+              <td>$772K</td>
+              <td><span class="status-dot green"></span> Healthy</td>
+            </tr>
+            <tr>
+              <td><strong>Summit Education</strong></td>
+              <td>Enterprise</td>
+              <td>680</td>
+              <td>$726K</td>
+              <td><span class="status-dot green"></span> Healthy</td>
+            </tr>
+            <tr>
+              <td><strong>Horizon Media</strong></td>
+              <td>Professional</td>
+              <td>1,420</td>
+              <td>$664K</td>
+              <td><span class="status-dot yellow"></span> At Risk</td>
+            </tr>
+            <tr>
+              <td><strong>Catalyst Pharma</strong></td>
+              <td>Enterprise</td>
+              <td>580</td>
+              <td>$619K</td>
+              <td><span class="status-dot green"></span> Healthy</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-right">
+    <!-- System Health -->
+    <div class="panel">
+      <div class="panel-header">System Health</div>
+      <div class="panel-body">
+        <div class="health-grid">
+          <div class="health-item">
+            <span class="health-score excellent">99</span>
+            <span class="health-details">
+              <span class="health-name">API Gateway</span><br />
+              <span class="health-status">99.99% uptime</span>
+            </span>
+          </div>
+          <div class="health-item">
+            <span class="health-score good">94</span>
+            <span class="health-details">
+              <span class="health-name">Database</span><br />
+              <span class="health-status">Replication lag: 2ms</span>
+            </span>
+          </div>
+          <div class="health-item">
+            <span class="health-score warning">78</span>
+            <span class="health-details">
+              <span class="health-name">Search Index</span><br />
+              <span class="health-status">Indexing delayed 5m</span>
+            </span>
+          </div>
+          <div class="health-item">
+            <span class="health-score excellent">97</span>
+            <span class="health-details">
+              <span class="health-name">CDN</span><br />
+              <span class="health-status">Cache hit rate: 96.2%</span>
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLA Performance -->
+    <div class="panel">
+      <div class="panel-header">SLA Performance</div>
+      <div class="panel-body">
+        <div class="sla-row">
+          <span class="sla-name">Uptime SLA (99.95%)</span>
+          <span class="sla-value sla-ok">99.987%</span>
+        </div>
+        <div class="sla-row">
+          <span class="sla-name">API Latency P99 (&lt;500ms)</span>
+          <span class="sla-value sla-ok">342ms</span>
+        </div>
+        <div class="sla-row">
+          <span class="sla-name">Error Rate (&lt;0.1%)</span>
+          <span class="sla-value sla-ok">0.04%</span>
+        </div>
+        <div class="sla-row">
+          <span class="sla-name">Support Response (&lt;4h)</span>
+          <span class="sla-value sla-warn">3.8h avg</span>
+        </div>
+        <div class="sla-row">
+          <span class="sla-name">Data Backup RPO (&lt;1h)</span>
+          <span class="sla-value sla-ok">15m</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recent Alerts -->
+    <div class="panel">
+      <div class="panel-header">Recent Alerts</div>
+      <div class="panel-body">
+        <div class="alert-item alert-error">
+          <span class="alert-time">2h ago</span>
+          <div class="alert-title">High Error Rate — Payment Service</div>
+          <div class="alert-desc">Error rate exceeded 1% threshold for 5 minutes. Auto-scaled to 8 instances.</div>
+        </div>
+        <div class="alert-item alert-warning">
+          <span class="alert-time">6h ago</span>
+          <div class="alert-title">Database Connection Pool — 85% Utilized</div>
+          <div class="alert-desc">Connection pool approaching capacity. Consider increasing max_connections.</div>
+        </div>
+        <div class="alert-item alert-info">
+          <span class="alert-time">12h ago</span>
+          <div class="alert-title">Deployment Complete — v2.14.3</div>
+          <div class="alert-desc">Canary deployment completed successfully. All health checks passing.</div>
+        </div>
+        <div class="alert-item alert-warning">
+          <span class="alert-time">1d ago</span>
+          <div class="alert-title">SSL Certificate Expiring</div>
+          <div class="alert-desc">Certificate for api.platform.io expires in 14 days. Auto-renewal scheduled.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="dashboard-footer">
+  SaaS Platform Dashboard | Data refreshed hourly | Report generated Feb 1, 2025 08:00 UTC | Confidential
+</div>
+
+</body>
+</html>
